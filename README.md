@@ -20,6 +20,9 @@ Both skills are deliberately parameterized: they define the *slots* (which gates
 docs live), and the **consuming repo supplies the values** — typically in its `CLAUDE.md`. Get that seam
 right and a skill drops into a non-Svelte, non-JS repo unchanged.
 
+> The canonical pin is the **commit SHA** recorded in each vendored copy (see [Versioning](#versioning));
+> `VERSION` is a human-facing label.
+
 ## How to vendor it into a consuming repo
 
 These skills are meant to be **vendored** (copied in + pinned), not submoduled — the proven pattern for
@@ -39,5 +42,6 @@ A `sync-agent-skills.sh`-style script in the consuming repo can automate steps 1
 
 ## Versioning
 
-`VERSION` (and matching git tags) is the human-facing ref. Consumers should additionally record the exact
-**commit SHA** in each vendored copy, since that's what actually pins the content.
+The **commit SHA is the canonical pin** — consumers record it in each vendored copy's header, since that's
+what actually fixes the content. `VERSION` is a human-facing label that tracks releases; a matching git tag
+(e.g. `v0.1.0`) may be cut alongside it for convenience, but always pin to the SHA.
