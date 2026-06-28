@@ -16,8 +16,9 @@ the work saved.
 >   equivalent in this project, say so explicitly rather than skipping silently.
 > - **Delegation log** path (§7 / reference.md).
 >
-> Companion skills: **independent-expert-review** (the review-panel pattern, §6 here) and the host repo's
-> own conventions skills. Deeper rubric — scorecard, two-tier logging, tooling map — is in **reference.md**.
+> Companion skills: **independent-expert-review** (the review-panel pattern — formerly §6 here, now its own
+> skill) and the host repo's own conventions skills. Deeper rubric — scorecard, two-tier logging, tooling
+> map — is in **reference.md**.
 
 ## 0. Principles
 1. **The main loop owns the outcome.** A subagent's output is a *proposal*, done only after the main loop
@@ -88,7 +89,8 @@ The host repo fills each slot with a concrete command (see the slot list at the 
 stable; the **commands** are the project's.
 - **Always gate:** type/compile check + lint. *(every delegation)*
 - **Logic/code gate:** unit tests — when the change touches logic.
-- **UI/component gate:** an accessibility check (e.g. axe) — **first-class for any UI work, not optional**.
+- **UI/component gate:** an accessibility check (e.g. axe) — run whenever a user-facing component or story
+  is added/edited; **first-class for any UI work, not optional**.
 - **Visual-regression gate:** the project's VRT runner. *Bright-line trigger:* any change to a styled/visual
   source file (a component or stylesheet). Non-visual / test-only / logic-only changes skip it.
 
@@ -107,7 +109,8 @@ stable; the **commands** are the project's.
   security/invariant surface; off for MINOR/NIT.**
 - **Repair loop** — feed the failing gate output back to the **same** agent. "Unproductive" = the same check
   still failing after a round. Cap: **1 round** for < ~1 h tasks, **2** for larger. On exhaustion, **escalate
-  to the main loop**; if it was a worktree, **discard it** (`git worktree remove --force`), don't merge.
+  to the main loop**; if it was a worktree, **discard it** (`git worktree remove --force`), don't merge. If
+  round 2 looks substantively like round 1, escalate immediately — don't send a 3rd.
 
 ## 5. Verify before it lands
 **Gate (binary, observed by the main loop):** the §3a checks for what the task touched. No gate pass → not
