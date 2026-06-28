@@ -8,15 +8,23 @@ only its project-specific rules and concrete gate values.
 
 ```
 skills/
-  subagent-framework/SKILL.md          # delegate to subagents & measure whether it worked:
-                                        #   when to delegate, the task contract, size tiers,
-                                        #   orchestration patterns, the eval scorecard, logging, guardrails
+  subagent-framework/
+    SKILL.md                            # delegate to subagents & keep the judgment: when to delegate,
+                                        #   the task contract, roles, orchestration patterns, guardrails
+    reference.md                        #   reference detail: the eval scorecard, two-tier logging, tooling
   agent-operating-principles/SKILL.md   # research-first · the troubleshooting playbook ·
                                         #   keep-the-troubleshooting-doc-current discipline
+  independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
+                                        #   contract, finding schema, synthesis + per-finding verification
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 
-Both skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
+The skills interlock: **subagent-framework** is the delegation contract, **independent-expert-review** is the
+review-panel pattern it references, and **agent-operating-principles** is the cross-cutting working
+discipline. A skill folder may carry extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`),
+so vendor the **whole skill directory**, not just the entry file.
+
+All three are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
 docs live), and the **consuming repo supplies the values** — typically in its `CLAUDE.md`. Get that seam
 right and a skill drops into a non-Svelte, non-JS repo unchanged.
 
@@ -28,8 +36,9 @@ right and a skill drops into a non-Svelte, non-JS repo unchanged.
 These skills are meant to be **vendored** (copied in + pinned), not submoduled — the proven pattern for
 ephemeral fresh-clone web/sandbox containers, no submodule-init or egress-proxy friction.
 
-1. Copy the skill folders into your repo's agent-skills directory, e.g.
-   `.agents/skills/subagent-framework/` and `.agents/skills/agent-operating-principles/`.
+1. Copy the **whole skill directories** into your repo's agent-skills directory, e.g.
+   `.agents/skills/subagent-framework/` (incl. its `reference.md`), `.agents/skills/agent-operating-principles/`,
+   and `.agents/skills/independent-expert-review/`.
 2. Symlink them into the harness skills directory so they're discoverable, e.g.
    `.claude/skills/subagent-framework -> ../../.agents/skills/subagent-framework`.
 3. **Pin the source ref** — record the `agent-playbook` commit SHA in each vendored copy (a header line) so

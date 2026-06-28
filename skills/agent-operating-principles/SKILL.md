@@ -1,15 +1,22 @@
 ---
 name: agent-operating-principles
-description: Cross-project working discipline for coding agents — research existing open source before building anything new; debug with the troubleshooting playbook (reproduce → measure the real path → probe → compare a working sibling → suspect framework edges → fix at the root + add a regression guard) instead of guess-and-patch; and keep the project's troubleshooting reference current by recording each hard-won finding. Project-agnostic method; the consuming repo names its own docs/ capture locations. Load before building something new, before debugging a non-obvious bug, and after burning real time on a gotcha.
+description: Use before building something new, before debugging a non-obvious bug, and after burning real time on a gotcha. Three project-agnostic habits for coding agents — research existing open source before building (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); and keep the project's troubleshooting reference current by recording each hard-won finding (§3). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
 ---
 
 # Agent operating principles
 
-Project-agnostic working discipline for coding agents. Three habits that pay for themselves repeatedly:
-**research before you build**, **debug by method not by guess**, and **write down what you learned**. The
-consuming repo supplies the concrete locations (its research folder, its troubleshooting doc); this skill is
-the method.
+Project-agnostic working discipline for coding agents. Three habits that pay for themselves repeatedly;
+**load the relevant section for the moment you're in:**
+- **§1 Research before you build** — when a new component/feature/capability is needed.
+- **§2 Debug by method** — when a reported bug isn't obvious from the code.
+- **§3 Record what you learned** — after any gotcha that cost real debugging time.
+
+> **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
+> - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
+>   folder).
+> - **Troubleshooting reference** (§3) — the one doc that holds this repo's gotchas (e.g.
+>   `docs/debug-troubleshooting.md`).
 
 ## 1. Research existing open source before building anything new
 
@@ -25,6 +32,10 @@ project's research folder: the options considered, each one's license / maintena
 **cited recommendation**, so the decision is reviewable later. Only build once you've established that
 nothing suitable exists to adopt or adapt — and at the call site, note which options you checked and why
 none fit.
+
+> Prior-art research is read-heavy, parallelizable, and easy to verify against sources — a prime candidate to
+> **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
+> through an `independent-expert-review` panel before you commit to a build.
 
 ## 2. Debug by method, not by guesswork — the troubleshooting playbook
 
