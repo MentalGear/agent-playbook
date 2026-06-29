@@ -37,12 +37,14 @@ resolve against it; a delegation may never exceed the path's declared permission
 ```yaml
 # .agents/access.yaml — path → permission for agents/sub-agents
 paths:
+  - glob: "CLAUDE.md"           # the operating contract — propose a diff + get approval, never silent
+    permission: approval
   - glob: ".agents/skills/**"   # vendored — managed only by the sync script
     permission: read-only
-  - glob: ".agents/gates.yaml"
-    permission: read-only
-  - glob: ".agents/access.yaml"
-    permission: read-only
+  - glob: ".agents/gates.yaml"  # part of the contract
+    permission: approval
+  - glob: ".agents/access.yaml" # changes the permission model itself
+    permission: approval
   - glob: ".agents/scratch/**"
     permission: write
   - glob: "docs/research/**"
@@ -58,10 +60,15 @@ paths:
 - **append** — add entries/files; don't rewrite or delete existing history (logs, research, troubleshooting).
 - **write** — free to create/modify/delete (scratch).
 - **scoped** — defer to the delegation's declared access scope (`agent-access`); source code lives here.
+- **approval** — may be changed only by **showing the proposed diff and getting explicit human approval
+  first** (never silently). For the **operating contract** — `CLAUDE.md`, `.agents/access.yaml`,
+  `.agents/gates.yaml` — where a change alters how every future agent behaves. (Same spirit as
+  `review-skill-proposal`: a model validates and proposes, a human accepts.)
 
 ## How an agent uses this
 1. **Placing an artifact?** Put it in the role's standard folder (a debugging finding → `docs/debug/`; a
    research capture → `docs/research/`; a delegation entry → `docs/subagent-log/`; throwaway → scratch).
 2. **About to write a path?** Check `.agents/access.yaml`: `read-only` → don't; `append` → add, don't rewrite;
-   `write` → free; `scoped` → only within the delegation's `agent-access` scope.
+   `write` → free; `scoped` → only within the delegation's `agent-access` scope; `approval` → show the diff
+   and get a human yes first (the contract files).
 3. **Never hand-edit `.agents/skills/**`** — it's sync-managed and carries a "do not edit here" header.
