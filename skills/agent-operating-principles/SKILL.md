@@ -1,6 +1,6 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before debugging a non-obvious bug, and after burning real time on a gotcha. Three project-agnostic habits for coding agents — research existing open source before building (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); and keep the project's troubleshooting reference current by recording each hard-won finding (§3). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
 ---
 
