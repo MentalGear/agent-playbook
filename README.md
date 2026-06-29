@@ -26,6 +26,8 @@ registry.yaml                           # published index (per-skill version, sh
 scripts/
   sync-agent-skills.sh                  # canonical vendoring tool (copy into your repo; writes the lockfile)
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
+  drift-check.sh                        # consumer: vendored skills vs lockfile (hand-edit guard; pre-push)
+  update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 
