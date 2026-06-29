@@ -18,7 +18,7 @@ Project-agnostic working discipline for coding agents. Four habits that pay for 
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
 >   folder).
 > - **Troubleshooting reference** (§3) — the one doc that holds this repo's gotchas (e.g.
->   `docs/debug-troubleshooting.md`).
+>   `docs/debug/troubleshooting.md`).
 
 ## 1. Research existing open source before building anything new
 
@@ -62,7 +62,7 @@ Skipping straight to step 6 with a guessed patch is the anti-pattern this exists
 ## 3. Keep the troubleshooting reference current — record what you learned
 
 Maintain **one troubleshooting reference** in the repo (the project names the file, e.g.
-`docs/debug-troubleshooting.md`). It is the project's institutional memory for *"things that bit us and how
+`docs/debug/troubleshooting.md`). It is the project's institutional memory for *"things that bit us and how
 to avoid them"* — non-obvious framework/library footguns, performance cliffs, API surprises, and
 environment/tooling traps. Two duties, equally important:
 

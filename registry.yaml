@@ -9,7 +9,7 @@ skills:
     requires: [agent-repo-layout]
   agent-operating-principles:
     version: 1.0.0
-    sha256: b8c0c02d97e13830120b081c24017cf0f9bfe533975e9a1850caaf83a1bd6387
+    sha256: 5ae059eb80ab44a15459ada742dc02a91a29616b4f40d1af1a84d20eb3087bf6
   agent-repo-layout:
     version: 1.0.0
     sha256: bcbcd6ac00ad934af10ce0cb14405c606b0acd4e67940dae43b349bc343e297a
@@ -20,7 +20,7 @@ skills:
     default-access: "read-only"
   project-gates:
     version: 1.0.0
-    sha256: deac830149c383cf2b8a3a2227bee0066fbc2ffa841e0e5f333b62574bc7b74a
+    sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
   propose-skill:
     version: 1.0.0
     sha256: 8dd88a9477f62ae6b9a985293865cd600a76da46324545f32f46ebe8216f8249
