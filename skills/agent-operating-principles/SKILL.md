@@ -6,11 +6,12 @@ user-invocable: false
 
 # Agent operating principles
 
-Project-agnostic working discipline for coding agents. Three habits that pay for themselves repeatedly;
+Project-agnostic working discipline for coding agents. Four habits that pay for themselves repeatedly;
 **load the relevant section for the moment you're in:**
 - **§1 Research before you build** — when a new component/feature/capability is needed.
 - **§2 Debug by method** — when a reported bug isn't obvious from the code.
 - **§3 Record what you learned** — after any gotcha that cost real debugging time.
+- **§4 Test real code** — when code stops being a throwaway spike and becomes something you'll keep.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
@@ -78,3 +79,20 @@ fit the existing structure, reorganize so it stays scannable rather than bolting
 
 This closes the loop on §2: the playbook is how you find a root cause; this is how the next agent skips the
 hunt entirely.
+
+## 4. Test real code — spikes are free, kept code is test-driven
+
+Throwaway exploration needs no tests: spike freely to learn an API, try a layout, or prove an idea. But the
+moment code becomes **real** — you'll keep it, ship it, something else will depend on it, or you're about to
+refactor it — switch to **test-driven development**: write the failing test first, make it pass, then
+refactor (red → green → refactor).
+
+The threshold is **"real," not "big"**: a 20-line module other code calls is real; a 300-line scratch file
+you'll delete is not. The tell is *permanence* — if it would hurt for this to silently break later, it needs
+a test now, and writing that test first is the cheapest time to do it.
+
+Test-*first*, not test-after: the test pins the intended behaviour before the implementation biases it,
+forces a testable design, and hands you the regression guard from §2 (step 6) for free. Test-after tends to
+test what you happened to build — and often never gets written. (This is the same `logic` gate the
+`subagent-framework` skill already runs at §3a; TDD just means you write it first and let it drive the
+design.)
