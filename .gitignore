@@ -1,0 +1,4 @@
+# This repo is the SOURCE of skills; it must never vendor itself.
+# (guards against running the sync script from here by mistake)
+/.agents/
+/.claude/

@@ -46,5 +46,5 @@ Keep a **delegation log** in the repo (the host repo sets the path).
 - Subagent launch: the agent/task tool's `model`, `subagent_type`, background, and worktree-isolation
   options; a "continue this agent" message to resume the same agent (repair loop) **with its context
   intact** — relaunch from the transcript rather than spawning a fresh agent.
-- Gates: prefer the host repo's named scripts for each §3a slot.
+- Gates: prefer the host repo's named scripts for each gate in the `project-gates` manifest.
 - Log every delegation per the two-tier scheme above.

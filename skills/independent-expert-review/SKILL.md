@@ -2,6 +2,9 @@
 name: independent-expert-review
 description: Use when you need a neutral, multi-perspective review of a change, design doc, or artifact — convene a panel of independent expert subagents (one per discipline), each blind to the conclusion you want, collect findings on a fixed severity schema, then synthesize and verify every finding against the code in the main loop. Load before reviewing a non-trivial diff, a new component/API, an architecture decision, or anything you want a second (third, fourth) opinion on. Covers panel sizing, the neutral-reviewer contract, the finding schema, adversarial verification, and why agreement is a severity tiebreaker — not a validity signal.
 user-invocable: false
+default-access: read-only   # the review panel it spawns is read-only (see the agent-access skill)
+version: 1.0.0
+requires: [project-gates, agent-access]
 ---
 
 # Independent expert review — neutral panels that find real problems
@@ -12,8 +15,9 @@ don't share your assumptions). The load-bearing step is the **main loop's synthe
 verification** — the panel proposes; you decide.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
-> - **Verification gates** — the commands the main loop re-runs to confirm a finding is real (type/compile
->   check, tests, etc.). The panel is read-only; verification is where claims get checked.
+> - **Verification gates** — the host's gate manifest (see the **project-gates** skill / e.g.
+>   `.agents/gates.yaml`); the main loop re-runs the relevant gates to confirm a finding is real. The panel
+>   is read-only; verification is where claims get checked.
 > - **Persistence location** — where a review round is written up (e.g. a `docs/research/` or `reviews/`
 >   folder).
 >
@@ -35,7 +39,8 @@ The value of a panel collapses if the reviewers are steered. So:
 - **One discipline per reviewer.** A reviewer told to "check everything" checks nothing deeply. Assign a lens
   (correctness, security, performance, a11y/UX, API design, QA, the relevant language/framework) and let it
   go deep.
-- **Read-only.** Reviewers find and cite; they don't edit. The main loop owns every change.
+- **Read-only.** Reviewers find and cite; they don't edit (the `agent-access` `read-only` scope — or
+  `propose` if a reviewer should return a patch). The main loop owns every change.
 
 ## 2. Size the panel to the surface (don't reflex to five)
 - **1–2 reviewers** — a < ~200-line / single-discipline change.
@@ -43,7 +48,7 @@ The value of a panel collapses if the reviewers are steered. So:
 - **Full 5** — a public API / shared primitive / high-stakes architecture decision. Typical lenses:
   language-or-framework · architecture · a11y/UX · performance · QA.
 
-Run the reviewers **in parallel** (one batch, background). Cap concurrency.
+Run the reviewers **in parallel** (one batch, background). Cap concurrency (a handful at a time, ~3–5).
 
 ## 3. The reviewer contract (every panelist gets this)
 1. **Role/lens** — "world-class expert in X; neutral reviewer on a panel."
@@ -70,8 +75,9 @@ Run the reviewers **in parallel** (one batch, background). Cap concurrency.
    spots, so agreement can amplify a shared bias. Validity comes from reading the code, not the vote count.
 
 ## 5. Cost & persistence
-- **Synthesis isn't free.** For a large artifact, a 5-panel + de-dup + verification can cost as much as one
-  disciplined main-loop read. Size to the stakes; a panel earns its keep on breadth and independence, not by
-  default.
+- **Synthesis isn't free.** The de-dup + per-finding verification you must do *after* the panel returns
+  costs about as much as reading the artifact yourself once — so a panel doesn't save you the careful read;
+  its ~5× spend (N parallel reads on top) buys breadth and independence, not savings. Size to the stakes; a
+  panel earns its keep when one perspective would miss things, not by default.
 - **Persist** the round (panel, findings, verdicts, what was accepted/rejected and why) in the host repo's
   review/research location, dated. Turn accepted findings into tasks.
