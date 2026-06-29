@@ -18,8 +18,8 @@ skills/
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
                                         #   subagent-framework + independent-expert-review reference
-  agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout and the path→permission map
-                                        #   (.agents/access.yaml) that agent-access scopes resolve against
+  agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout, the path→permission map
+                                        #   (.agents/access.yaml), and the ship-a-working-devcontainer convention
   agent-access/SKILL.md                 # access-scope vocabulary (read-only/propose/write:<globs>/write) +
                                         #   isolation (inline vs sub-agent); resolves against access.yaml
   propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
