@@ -70,8 +70,9 @@ Run the reviewers **in parallel** (one batch, background). Cap concurrency.
    spots, so agreement can amplify a shared bias. Validity comes from reading the code, not the vote count.
 
 ## 5. Cost & persistence
-- **Synthesis isn't free.** For a large artifact, a 5-panel + de-dup + verification can cost as much as one
-  disciplined main-loop read. Size to the stakes; a panel earns its keep on breadth and independence, not by
-  default.
+- **Synthesis isn't free.** The de-dup + per-finding verification you must do *after* the panel returns
+  costs about as much as reading the artifact yourself once — so a panel doesn't save you the careful read;
+  its ~5× spend (N parallel reads on top) buys breadth and independence, not savings. Size to the stakes; a
+  panel earns its keep when one perspective would miss things, not by default.
 - **Persist** the round (panel, findings, verdicts, what was accepted/rejected and why) in the host repo's
   review/research location, dated. Turn accepted findings into tasks.
