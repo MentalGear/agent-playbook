@@ -23,6 +23,12 @@ fm_field() { printf '%s\n' "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -1; }
 # scalar field with any YAML inline comment + trailing space stripped (use only for
 # short scalar fields — name/version/requires/default-access/isolation — never description)
 fm_scalar() { fm_field "$1" "$2" | sed 's/[[:space:]]*#.*$//; s/[[:space:]]*$//'; }
+# Deterministic hash of ALL files in a skill dir (path+content). MUST stay byte-identical
+# to build-registry.sh / sync-agent-skills.sh / drift-check.sh, or hashes will disagree.
+skill_dir_hash() {
+  ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
+      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
+}
 
 validate_one() {
   local name="$1" f="skills/$1/SKILL.md" before="$fails"
@@ -77,10 +83,10 @@ validate_one() {
   local iso; iso="$(fm_scalar "$fm" isolation)"
   [ -n "$iso" ] && { [[ "$iso" =~ ^(inline|subagent)$ ]] || fail "$name: isolation '$iso' must be inline|subagent"; }
 
-  # registry carries this skill with a matching content hash
-  local sha; sha="$(sha256sum "$f" | cut -d' ' -f1)"
+  # registry carries this skill with a matching whole-dir content hash
+  local sha; sha="$(skill_dir_hash "skills/$name")"
   if [ -f registry.yaml ]; then
-    grep -q "sha256: $sha" registry.yaml || fail "$name: registry.yaml has no entry with this SKILL.md's sha256 — run build-registry.sh"
+    grep -q "sha256: $sha" registry.yaml || fail "$name: registry.yaml has no entry with this skill's dir hash — run build-registry.sh"
   else
     fail "registry.yaml missing — run build-registry.sh"
   fi
