@@ -65,15 +65,18 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
 - **Extractor** — trivial deterministic work only (collect a file list, grep-and-summarize, extract symbol
   names, a pure rename sweep). A cheap/fast model. **Never a write task without a following gate** — the
   repair cost of a bad extractor write is high.
-- **Agent type:** a read-only search agent for read-only fan-out; a general/implementation agent for
-  review/implementation (instruct read-only when it must not write). Worktree isolation **only** when
+- **Agent type & access:** a read-only search agent for read-only fan-out; a general/implementation agent
+  for review/implementation. Declare the **access scope** (`read-only` / `propose` / `write:<globs>` /
+  `write`) per the **agent-access** skill — least-privilege by default. Worktree isolation **only** when
   multiple agents write in parallel (it costs setup time + disk each — not free).
 
 ## 3. The task contract (every delegation states these)
 1. **Role/goal** — one line.
 2. **Scope** — exact files/dirs in/out (exclude generated/vendored code).
 3. **Context** — design intent (link the plan), project conventions, the skill(s) to consult.
-4. **Constraints** — read-only vs may-write; don't touch X; isolation mode.
+4. **Constraints** — the sub-agent's **access scope + isolation** per the **agent-access** skill
+   (`read-only` / `propose` / `write:<globs>` / `write`; inline vs sub-agent), resolved against
+   `.agents/access.yaml`; plus any explicit don't-touch.
 5. **Acceptance checks** — what "done" means (§3a).
 6. **Output format** — compact structured return; "your final message IS the deliverable." Fixed schema for
    reviews.

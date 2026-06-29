@@ -20,12 +20,15 @@ skills/
                                         #   subagent-framework + independent-expert-review reference
   agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout and the path→permission map
                                         #   (.agents/access.yaml) that agent-access scopes resolve against
+  agent-access/SKILL.md                 # access-scope vocabulary (read-only/propose/write:<globs>/write) +
+                                        #   isolation (inline vs sub-agent); resolves against access.yaml
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 
 The skills interlock: **subagent-framework** is the delegation contract, **independent-expert-review** is the
 review-panel pattern it references, **project-gates** is the shared gate-manifest schema both of them point
-at, **agent-repo-layout** is the standard repo structure + permission map, and **agent-operating-principles**
+at, **agent-repo-layout** is the standard repo structure + permission map, **agent-access** is the
+scope/isolation vocabulary delegations declare (resolving against that map), and **agent-operating-principles**
 is the cross-cutting working discipline. A skill folder may carry
 extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`), so vendor the **whole skill
 directory**, not just the entry file.
