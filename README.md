@@ -22,10 +22,13 @@ skills/
                                         #   (.agents/access.yaml) that agent-access scopes resolve against
   agent-access/SKILL.md                 # access-scope vocabulary (read-only/propose/write:<globs>/write) +
                                         #   isolation (inline vs sub-agent); resolves against access.yaml
+  propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
+  review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
 registry.yaml                           # published index (per-skill version, sha256, requires, deprecated)
 scripts/
   sync-agent-skills.sh                  # canonical vendoring tool (copy into your repo; writes the lockfile)
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
+  validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 
@@ -79,6 +82,16 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > `bun run test:unit --run`; safety-specific `bun run test:stories` (axe) + `scripts/vrt.sh`. **Log every
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
+
+## Contributing a skill (propose → review)
+
+This repo is the **hub**. To contribute a project-agnostic skill (or a fix), follow the **propose-skill**
+skill: author `skills/<name>/SKILL.md` with the required frontmatter (`name`, `description`, semver
+`version`, optional `requires`/`default-access`/`isolation`), run `scripts/build-registry.sh`, self-check
+with `scripts/validate-skill.sh <name>`, and open a PR. A maintainer accepts it via the
+**review-skill-proposal** skill (the `validate-skill.sh` mechanical checks + a judgment pass: genuinely
+general, non-duplicative, safe, honestly versioned). On merge, the registry bump notifies downstream
+consumers.
 
 ## Versioning, the registry & updates
 
