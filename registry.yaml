@@ -13,6 +13,9 @@ skills:
   agent-repo-layout:
     version: 1.0.0
     sha256: bcbcd6ac00ad934af10ce0cb14405c606b0acd4e67940dae43b349bc343e297a
+  end-of-round-report:
+    version: 1.0.0
+    sha256: 09c0fde667331118e30c8f86fbf5c56af98b3780ceafd4b5d167251b4a946c3b
   independent-expert-review:
     version: 1.0.0
     sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62

@@ -24,13 +24,16 @@ skills/
                                         #   isolation (inline vs sub-agent); resolves against access.yaml
   propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
   review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
-registry.yaml                           # published index (per-skill version, sha256, requires, deprecated)
+  end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
+registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   sync-agent-skills.sh                  # canonical vendoring tool (copy into your repo; writes the lockfile)
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
   validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
   drift-check.sh                        # consumer: vendored skills vs lockfile (hand-edit guard; pre-push)
   update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
+  setup.sh                              # one-time: register the registry.yaml regenerate-on-conflict driver
+.github/workflows/ci.yml                # registry freshness · validate-skill · test harnesses · shellcheck
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 

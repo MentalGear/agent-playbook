@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: registry.yaml is fresh (regenerate → no diff)
+        run: |
+          bash scripts/build-registry.sh
+          git diff --exit-code registry.yaml \
+            || { echo "::error::registry.yaml is stale — run scripts/build-registry.sh and commit it."; exit 1; }
+
+      - name: validate all skills
+        run: bash scripts/validate-skill.sh --all
+
+      - name: tests
+        run: |
+          for t in scripts/test/*.test.sh; do
+            echo "── $t"
+            bash "$t"
+          done
+
+      - name: shellcheck (errors only)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          shellcheck -S error scripts/*.sh scripts/test/*.sh
