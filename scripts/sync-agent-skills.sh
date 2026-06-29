@@ -23,6 +23,7 @@ link_dir="$repo_root/.claude/skills"
 lockfile="$repo_root/.agents/skills-lock.json"
 
 # --- Resolve the pin: explicit env > lockfile > error ----------------------------
+PLAYBOOK_REF_ENV="${PLAYBOOK_REF:-}"   # was it explicitly requested this run?
 locked_sha=""
 [ -f "$lockfile" ] && locked_sha="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$lockfile" | head -1)"
 PLAYBOOK_REF="${PLAYBOOK_REF:-$locked_sha}"
@@ -40,8 +41,10 @@ if [[ -n "${AGENT_PLAYBOOK_SRC:-}" ]]; then
   if ! git -C "$src" diff --quiet || ! git -C "$src" diff --cached --quiet; then
     echo "WARN: local checkout $src is dirty — header SHA $resolved_sha may not match the copied tree." >&2
   fi
-  if [[ "$resolved_sha" != "$PLAYBOOK_REF" && "$(git -C "$src" rev-parse --short HEAD)" != "$PLAYBOOK_REF" ]]; then
-    echo "WARN: local checkout is at $resolved_sha but the requested pin is $PLAYBOOK_REF; vendoring the local commit." >&2
+  if [[ -n "$PLAYBOOK_REF_ENV" && "$resolved_sha" != "$PLAYBOOK_REF_ENV" && "$(git -C "$src" rev-parse --short HEAD 2>/dev/null)" != "$PLAYBOOK_REF_ENV" ]]; then
+    echo "ERROR: explicit PLAYBOOK_REF=$PLAYBOOK_REF_ENV disagrees with local checkout HEAD $resolved_sha." >&2
+    echo "       Check out that ref in $src, or omit PLAYBOOK_REF to vendor (and pin) local HEAD." >&2
+    exit 2
   fi
   echo "Vendoring from local checkout $src @ $resolved_sha"
 else
@@ -57,6 +60,12 @@ lock_entries=()
 
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
+}
+# Deterministic hash of ALL files in a skill dir (path+content) — covers reference.md/assets.
+# MUST stay byte-identical to build-registry.sh / validate-skill.sh / drift-check.sh.
+skill_dir_hash() {
+  ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
+      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
 }
 
 for skill in "${SKILLS[@]}"; do
@@ -84,8 +93,8 @@ for skill in "${SKILLS[@]}"; do
   ln -sfn "../../.agents/skills/$skill" "$link_dir/$skill"
 
   ver="$(fm_version "$src_skill_dir/SKILL.md")"; ver="${ver:-0.0.0}"
-  sha_source="$(sha256sum "$src_skill_dir/SKILL.md" | cut -d' ' -f1)"
-  sha_vendored="$(sha256sum "$dest/SKILL.md" | cut -d' ' -f1)"
+  sha_source="$(skill_dir_hash "$src_skill_dir")"    # whole-dir hash (covers reference.md/assets)
+  sha_vendored="$(skill_dir_hash "$dest")"
   lock_entries+=("    \"$skill\": { \"version\": \"$ver\", \"sha256_source\": \"$sha_source\", \"sha256_vendored\": \"$sha_vendored\" }")
   echo "  ✓ $skill ($ver)"
 done

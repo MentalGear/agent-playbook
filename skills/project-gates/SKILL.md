@@ -97,6 +97,6 @@ flow:
   - push
 
 locations:
-  delegation_log: docs/subagent-log.md
+  delegation_log: docs/subagent-log/
   review_rounds: docs/research/
 ```
