@@ -37,7 +37,7 @@ is the cross-cutting working discipline. A skill folder may carry
 extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`), so vendor the **whole skill
 directory**, not just the entry file.
 
-All four are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
+All six skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
 docs live), and the **consuming repo supplies the values** — its gates in a `project-gates` manifest, the
 rest typically in its `CLAUDE.md`. Get that seam right and a skill drops into a non-Svelte, non-JS repo with
 only its slot values changed (the gate categories are an open list — UI a11y/visual-regression are
