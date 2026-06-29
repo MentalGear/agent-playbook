@@ -38,19 +38,28 @@ category, not required gates).
 These skills are meant to be **vendored** (copied in + pinned), not submoduled — the proven pattern for
 ephemeral fresh-clone web/sandbox containers, no submodule-init or egress-proxy friction.
 
-1. Copy the **whole skill directories** into your repo's agent-skills directory, e.g.
-   `.agents/skills/subagent-framework/` (incl. its `reference.md`), `.agents/skills/agent-operating-principles/`,
-   and `.agents/skills/independent-expert-review/`.
-2. Symlink them into the harness skills directory so they're discoverable, e.g.
-   `.claude/skills/subagent-framework -> ../../.agents/skills/subagent-framework`.
-3. **Pin the source ref** — record the `agent-playbook` commit SHA in each vendored copy so you know exactly
-   what you have and can re-sync deliberately. (A sync script typically injects this as a header line into
-   each vendored `SKILL.md`; auxiliary files like `reference.md` ride along under the same pinned dir.)
-4. In your `CLAUDE.md`, replace the general guidance with a thin pointer + your concrete gate values, e.g.
-   *"Delegate per the `subagent-framework` skill. This project's gates: `<check>` · `<lint>` · `<unit>` ·
-   `<a11y>` · `<vrt>`. Log each delegation in `<log path>`."*
+**Use the provided sync script — don't hand-copy.** [`scripts/sync-agent-skills.sh`](scripts/sync-agent-skills.sh)
+is the canonical vendoring tool; copying files by hand drifts and loses the pin. Steps:
 
-A `sync-agent-skills.sh`-style script in the consuming repo can automate steps 1–3 against a pinned ref.
+1. **Copy the script** into your repo at `scripts/sync-agent-skills.sh`.
+2. **Pin it**: set `PLAYBOOK_REF` to the `agent-playbook` commit SHA you want (the SHA is the real pin), and
+   trim `SKILLS=(…)` to the skills you want.
+3. **Run it.** It vendors each whole skill directory into `.agents/skills/<name>/` (incl. files like
+   `reference.md`), injects a provenance SHA header into each `SKILL.md`, and creates the `.claude/skills/`
+   symlinks the harness discovers. Re-run it to update the pin — never hand-edit vendored files (they carry
+   a "do not edit here" header and are clobbered on the next sync).
+4. **Wire it into your `CLAUDE.md`**: replace the general guidance with a thin pointer + your concrete gate
+   values (fill the slots each skill defines). Generic form:
+   > *Delegate per the `subagent-framework` skill. This project's gates: `<check>` · `<lint>` · `<unit>` ·
+   > `<safety-specific>`. Log each delegation in `<log path>`. For review panels use the
+   > `independent-expert-review` skill; persist rounds in `<research dir>`.*
+
+   Concrete example (a Svelte/SvelteKit repo — the project this was extracted from):
+   > *Delegate per the **`subagent-framework`** skill. **This project's gates** (its §3a categories, filled
+   > in): always = `bun run check` + `bun run lint`; logic = `bun run test:unit --run`; safety-specific =
+   > `bun run test:stories` (axe a11y) for UI + `scripts/vrt.sh` (visual regression). **Log every delegation
+   > in `docs/subagent-log.md`.** For neutral review panels use the **`independent-expert-review`** skill;
+   > persist rounds dated in `docs/research/` and verify findings with the gates above.*
 
 ## Versioning
 
