@@ -11,14 +11,15 @@ agents **without** letting unverified output into the tree, and **without** orch
 the work saved.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
-> - **Gate commands** for the §3a slots — *always* (type/compile check + lint), *logic* (unit tests),
->   *UI/a11y* (accessibility check), *visual-regression* (VRT runner + any preflight). If a slot has no
->   equivalent in this project, say so explicitly rather than skipping silently.
-> - **Delegation log** path (§7 / reference.md).
+> - **Gate commands** for the §3a categories — *always* (type/compile check + lint), *logic* (unit /
+>   integration tests), and any *safety-specific* gates the change's risk surface demands (e.g. a11y +
+>   visual-regression for UI; a race detector, fuzz, or contract tests for concurrency/services). Fill the
+>   categories your repo has; if one doesn't apply, say so explicitly rather than skipping silently.
+> - **Delegation log** path (its format lives in `reference.md` → Logging).
 >
-> Companion skills: **independent-expert-review** (the review-panel pattern — formerly §6 here, now its own
-> skill) and the host repo's own conventions skills. Deeper rubric — scorecard, two-tier logging, tooling
-> map — is in **reference.md**.
+> Companion skills: **independent-expert-review** (the review-panel pattern — now its own skill) and the
+> host repo's own conventions skills. Deeper rubric — scorecard, two-tier logging, tooling map — is in
+> **reference.md**.
 
 ## 0. Principles
 1. **The main loop owns the outcome.** A subagent's output is a *proposal*, done only after the main loop
@@ -84,22 +85,24 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    the agent re-derive design under-context and drift. Outlining steps is also where you catch that a task
    should be split or kept.
 
-### 3a. Acceptance-check menu — the parameterized gate slots (pick what the task touches; don't run all by reflex)
-The host repo fills each slot with a concrete command (see the slot list at the top). The **slots** are
-stable; the **commands** are the project's.
-- **Always gate:** type/compile check + lint. *(every delegation)*
-- **Logic/code gate:** unit tests — when the change touches logic.
-- **UI/component gate:** an accessibility check (e.g. axe) — run whenever a user-facing component or story
-  is added/edited; **first-class for any UI work, not optional**.
-- **Visual-regression gate:** the project's VRT runner. *Bright-line trigger:* any change to a styled/visual
-  source file (a component or stylesheet). Non-visual / test-only / logic-only changes skip it.
+### 3a. Acceptance-check menu — the parameterized gate categories (pick what the task touches; don't run all by reflex)
+The host repo fills each category with concrete commands (see the slot list at the top). The **categories**
+are stable; the **commands** — and which categories even exist — are the project's. This is an open list,
+not a fixed four: run the gates that match the change's risk surface.
+- **Always:** type/compile check + lint. *(every delegation)*
+- **Logic:** unit / integration tests — when the change touches behaviour.
+- **Safety-specific:** the gates the change's risk surface demands. For UI that means an **accessibility
+  check** (e.g. axe — first-class for any UI work, not optional) and a **visual-regression** run on any
+  change to a styled/visual source file. For concurrency or services it might be a **race detector, fuzz, or
+  contract tests**. A repo with no such surface says so rather than inventing one.
 
 ## 4. Orchestration patterns
 - **Single delegate** — spec → run → **inspect the diff** (bound the expected size) → run the §3a gates the
   task touched → commit.
-- **Parallel fan-out** — independent tasks in one batch (background). Cap concurrency. If they write, give
-  each a **worktree**, then **join**: merge each worktree, and **re-run the always-gate on the unified tree**
-  before committing (per-worktree green ≠ integrated green).
+- **Parallel fan-out** — independent tasks in one batch (background). Cap concurrency (a handful at a time,
+  ~3–5). If they write, give each an **isolated workspace** (a git worktree, a separate clone, or your
+  harness's isolation mode), then **join**: merge each one, and **re-run the always-gate on the unified
+  tree** before committing (per-workspace green ≠ integrated green).
 - **Pipeline** — produce → verify per item, no barrier, when stages don't need the whole set.
 - **Panel / board review** — N discipline experts in parallel → main loop synthesizes. See the
   **independent-expert-review** skill for the full workflow (sizing, neutral-reviewer contract, finding
@@ -107,10 +110,13 @@ stable; the **commands** are the project's.
 - **Adversarial verify** — a second agent (given **identical scope**) tries to *refute* a finding; a
   refutation without a cited counter-reason is invalid. **Default on for BLOCKER/MAJOR and any
   security/invariant surface; off for MINOR/NIT.**
-- **Repair loop** — feed the failing gate output back to the **same** agent. "Unproductive" = the same check
-  still failing after a round. Cap: **1 round** for < ~1 h tasks, **2** for larger. On exhaustion, **escalate
-  to the main loop**; if it was a worktree, **discard it** (`git worktree remove --force`), don't merge. If
-  round 2 looks substantively like round 1, escalate immediately — don't send a 3rd.
+- **Repair loop** — feed the failing gate output back to the **same** agent. **Resume, don't restart:**
+  relaunch that agent from its transcript (a "continue this agent" message), never spawn a fresh one — a
+  fresh agent discards the partial progress and may clobber its half-finished work on disk. "Unproductive" =
+  the same check still failing after a round. Cap: **1 round** for < ~1 h tasks, **2** for larger. On
+  exhaustion, **escalate to the main loop**; if it ran in an isolated workspace, **discard it** (e.g.
+  `git worktree remove --force`), don't merge. If round 2 looks substantively like round 1, escalate
+  immediately — don't send a 3rd.
 
 ## 5. Verify before it lands
 **Gate (binary, observed by the main loop):** the §3a checks for what the task touched. No gate pass → not

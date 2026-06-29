@@ -26,7 +26,9 @@ so vendor the **whole skill directory**, not just the entry file.
 
 All three are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
 docs live), and the **consuming repo supplies the values** — typically in its `CLAUDE.md`. Get that seam
-right and a skill drops into a non-Svelte, non-JS repo unchanged.
+right and a skill drops into a non-Svelte, non-JS repo with only its slot values changed (`subagent-framework`'s
+§3a gate categories are an open list — UI a11y/visual-regression are *examples* of the safety-specific
+category, not required gates).
 
 > The canonical pin is the **commit SHA** recorded in each vendored copy (see [Versioning](#versioning));
 > `VERSION` is a human-facing label.
@@ -41,8 +43,9 @@ ephemeral fresh-clone web/sandbox containers, no submodule-init or egress-proxy 
    and `.agents/skills/independent-expert-review/`.
 2. Symlink them into the harness skills directory so they're discoverable, e.g.
    `.claude/skills/subagent-framework -> ../../.agents/skills/subagent-framework`.
-3. **Pin the source ref** — record the `agent-playbook` commit SHA in each vendored copy (a header line) so
-   you know exactly what you have and can re-sync deliberately.
+3. **Pin the source ref** — record the `agent-playbook` commit SHA in each vendored copy so you know exactly
+   what you have and can re-sync deliberately. (A sync script typically injects this as a header line into
+   each vendored `SKILL.md`; auxiliary files like `reference.md` ride along under the same pinned dir.)
 4. In your `CLAUDE.md`, replace the general guidance with a thin pointer + your concrete gate values, e.g.
    *"Delegate per the `subagent-framework` skill. This project's gates: `<check>` · `<lint>` · `<unit>` ·
    `<a11y>` · `<vrt>`. Log each delegation in `<log path>`."*

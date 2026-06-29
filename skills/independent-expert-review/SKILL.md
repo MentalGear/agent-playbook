@@ -43,7 +43,7 @@ The value of a panel collapses if the reviewers are steered. So:
 - **Full 5** — a public API / shared primitive / high-stakes architecture decision. Typical lenses:
   language-or-framework · architecture · a11y/UX · performance · QA.
 
-Run the reviewers **in parallel** (one batch, background). Cap concurrency.
+Run the reviewers **in parallel** (one batch, background). Cap concurrency (a handful at a time, ~3–5).
 
 ## 3. The reviewer contract (every panelist gets this)
 1. **Role/lens** — "world-class expert in X; neutral reviewer on a panel."
