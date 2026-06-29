@@ -12,8 +12,9 @@ don't share your assumptions). The load-bearing step is the **main loop's synthe
 verification** — the panel proposes; you decide.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
-> - **Verification gates** — the commands the main loop re-runs to confirm a finding is real (type/compile
->   check, tests, etc.). The panel is read-only; verification is where claims get checked.
+> - **Verification gates** — the host's gate manifest (see the **project-gates** skill / e.g.
+>   `.agents/gates.yaml`); the main loop re-runs the relevant gates to confirm a finding is real. The panel
+>   is read-only; verification is where claims get checked.
 > - **Persistence location** — where a review round is written up (e.g. a `docs/research/` or `reviews/`
 >   folder).
 >

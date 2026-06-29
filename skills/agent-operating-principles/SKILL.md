@@ -93,6 +93,6 @@ a test now, and writing that test first is the cheapest time to do it.
 
 Test-*first*, not test-after: the test pins the intended behaviour before the implementation biases it,
 forces a testable design, and hands you the regression guard from §2 (step 6) for free. Test-after tends to
-test what you happened to build — and often never gets written. (This is the same `logic` gate the
-`subagent-framework` skill already runs at §3a; TDD just means you write it first and let it drive the
-design.)
+test what you happened to build — and often never gets written. (This writes the `logic`
+gate of the project's gate manifest — see the **project-gates** skill — which the `subagent-framework` flow
+then runs; TDD just means you write it first and let it drive the design.)

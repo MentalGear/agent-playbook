@@ -11,10 +11,9 @@ agents **without** letting unverified output into the tree, and **without** orch
 the work saved.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
-> - **Gate commands** for the §3a categories — *always* (type/compile check + lint), *logic* (unit /
->   integration tests), and any *safety-specific* gates the change's risk surface demands (e.g. a11y +
->   visual-regression for UI; a race detector, fuzz, or contract tests for concurrency/services). Fill the
->   categories your repo has; if one doesn't apply, say so explicitly rather than skipping silently.
+> - **Gates** — declared in the host's gate manifest per the **project-gates** skill (e.g.
+>   `.agents/gates.yaml`): categories (always / logic / safety-specific), triggers, and commands. Run the
+>   always-gates plus those whose trigger matches the change (§3a).
 > - **Delegation log** path (its format lives in `reference.md` → Logging).
 >
 > Companion skills: **independent-expert-review** (the review-panel pattern — now its own skill) and the
@@ -85,16 +84,13 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    the agent re-derive design under-context and drift. Outlining steps is also where you catch that a task
    should be split or kept.
 
-### 3a. Acceptance-check menu — the parameterized gate categories (pick what the task touches; don't run all by reflex)
-The host repo fills each category with concrete commands (see the slot list at the top). The **categories**
-are stable; the **commands** — and which categories even exist — are the project's. This is an open list,
-not a fixed four: run the gates that match the change's risk surface.
-- **Always:** type/compile check + lint. *(every delegation)*
-- **Logic:** unit / integration tests — when the change touches behaviour.
-- **Safety-specific:** the gates the change's risk surface demands. For UI that means an **accessibility
-  check** (e.g. axe — first-class for any UI work, not optional) and a **visual-regression** run on any
-  change to a styled/visual source file. For concurrency or services it might be a **race detector, fuzz, or
-  contract tests**. A repo with no such surface says so rather than inventing one.
+### 3a. Which gates to run (the acceptance checks)
+Gates are **declared in the host's gate manifest** — see the **project-gates** skill for the schema
+(categories: always / logic / safety-specific; triggers; commands). Here, the rule for *using* them:
+- **Always-gates run every delegation.** Run **logic / safety-specific** gates whose trigger matches what
+  the change touched — pick what the task touches; don't run all by reflex, and don't skip a matching one.
+- **Gate truth is the command's tool output, never the agent's prose** (§0.2): observe the exit status
+  yourself before treating a gate as passed.
 
 ## 4. Orchestration patterns
 - **Single delegate** — spec → run → **inspect the diff** (bound the expected size) → run the §3a gates the
