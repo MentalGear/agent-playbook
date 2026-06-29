@@ -22,11 +22,11 @@ skills:
     sha256: 71ad81fff7f834692df3b820a098a36fe70c1a8c6af5e17b209b161a499a03bc
   propose-skill:
     version: 1.0.0
-    sha256: 9b1ee8efff48240569974edbc83210059564046303298b547fcc061003b0b1ec
+    sha256: bcd908274c0c1e11d87364247b8d091cebeb282f51bf269eaf7d943f67b1a289
     requires: [review-skill-proposal]
   review-skill-proposal:
     version: 1.0.0
-    sha256: 760f33d1cf8e2a6954f0788cab0b73f6e380a93432ddbd627e771ca38877ae4f
+    sha256: 12584fbf5274f8234c52064cda01ba857a0d4a83542038176ab74dc241d6d6c8
   subagent-framework:
     version: 1.0.0
     sha256: 84702707970e9e93f20816599429f762298efabaf7c3c100e732cd7715abadfa

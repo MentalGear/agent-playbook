@@ -11,6 +11,13 @@ The hub (`MentalGear/agent-playbook`) accepts contributions via PR (see **propos
 validate the proposed skill — **don't trust the submission**; check it. Two layers: a mechanical check
 (scripted) and a judgment check (human/maintainer).
 
+> **Hard rule — human approval is mandatory; a model never self-accepts.** A model (even the main-loop
+> orchestrator) may run the checks and form an opinion, but it **must not merge/accept a proposed skill** —
+> all checks green ≠ accepted. The model's job is to **validate and report**: post the ✓/✗ mechanical
+> results + the judgment-pass notes into the PR, then **request human review**. If a check fails but looks
+> adjustable, say so in the PR and **ask** — don't silently reject, and don't quietly fix-and-merge. Adding
+> a skill to a shared hub is supply-chain-sensitive, so the final gate is a human, not a model.
+
 > **Parameterized:** the allowed access vocabulary is the **agent-access** scope set; "general enough to
 > publish" is judged against this hub's scope (project-agnostic method skills only).
 
@@ -20,12 +27,15 @@ scripts/validate-skill.sh <name>      # or --all
 ```
 It **rejects** (non-zero) on any of:
 - missing/!=dir `name`, missing/short `description`, non-semver `version`;
-- `requires:` naming a skill that doesn't exist here;
-- `default-access`/`isolation` outside the known vocabulary;
-- `registry.yaml` stale (not regenerated) or missing this skill's content hash.
+- **duplicate frontmatter keys** (last-wins ambiguity — blocks smuggling a different resolved value);
+- `requires:` naming a skill that doesn't exist here, or a block-style (non-inline) `requires` list;
+- `default-access`/`isolation` outside the known vocabulary (a base scope + optional `network:on|off`);
+- `registry.yaml` stale or missing this skill's content hash.
 
-It **warns** (but doesn't reject) when a skill declares a **write** `default-access` — that needs explicit
-maintainer sign-off (a contributed skill shouldn't silently grant itself write by default).
+It also **hard-fails a `write` `default-access` by default** — a contributed skill must not silently grant
+itself write. A maintainer who has reviewed it re-runs with `ALLOW_WRITE_DEFAULT=1` to permit it (then it
+warns instead). The validator is **non-mutating** — it never rewrites `registry.yaml`. A passing run means
+"ready for human review", not "merge it" (see the hard rule above).
 
 ## Judgment check — the maintainer decides
 The script proves the shape; **you** decide the substance:

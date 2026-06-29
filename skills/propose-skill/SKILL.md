@@ -37,8 +37,9 @@ keep project-specific guidance in your own repo (it has no home in a shared hub)
    ✗ before proposing.
 4. **Open a PR** to `MentalGear/agent-playbook` adding the skill dir + the registry bump. Describe what it's
    for, why it's general, and which existing skills it interlocks with.
-5. On merge, downstream consumers see it via their **update-check** (new skill in the registry) and vendor
-   it deliberately.
+5. **A human maintainer reviews and approves** it via the **review-skill-proposal** skill (the validator's
+   report + a judgment pass). Acceptance is never automatic — a model validates and reports, a human makes
+   the call. On merge, downstream consumers see it via their **update-check** and vendor it deliberately.
 
 ## Updating an existing skill
 Same flow, but **bump `version`** and say what changed (and whether it's breaking) in the PR — that's what
