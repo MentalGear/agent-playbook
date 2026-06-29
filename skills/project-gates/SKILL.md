@@ -20,13 +20,17 @@ writes to the `logic` gate.
 gates:                      # the list of gates this repo has
   - id: <short-name>
     category: always | logic | safety-specific
-    when: <human-readable trigger>          # when this gate applies
-    when_paths: ["glob", ...]               # optional: machine-evaluable trigger (changed-file globs)
-    preflight: <shell>                      # optional: setup that must run first (e.g. start a daemon)
+    when: <human-readable trigger>          # the authoritative trigger (the final arbiter)
+    when_paths: ["glob", ...]               # optional coarse pre-filter: globs matched against
+                                            #   `git diff --name-only` (repo-relative). A path match still
+                                            #   defers to `when`; omit when the trigger is judgment-based.
+    preflight: <shell>                      # optional setup run before the gate; non-zero preflight aborts it
     run: <shell command>                    # the gate itself; non-zero exit = fail
 
 flow:                       # the ordered actions a change goes through (gates *and* the steps between)
-  - <action or run-gates step>
+  - <bare string>           #   a free-form action the agent performs, e.g. inspect-diff | commit | push
+  - run-gates: [<sel>, ...] #   run gates by selector: a category name (always|logic|safety-specific) or
+                            #   the reserved selector `matched` (gates whose when/when_paths hit the diff)
 
 locations:                  # other slots the skills consume
   delegation_log: <path>    # subagent-framework's two-tier log
@@ -42,11 +46,15 @@ locations:                  # other slots the skills consume
 
 ## How to read & run it
 1. **Always-gates run every time.** No exceptions.
-2. **Run a `logic`/`safety-specific` gate when its trigger matches the change** — judge by `when` (or, if
-   present, `when_paths` against the changed files). Don't run all gates by reflex; don't skip a matching one.
-3. **Honour `preflight`** before its gate.
+2. **Run a `logic`/`safety-specific` gate when its trigger matches the change.** `when` (prose) is the
+   authoritative trigger; `when_paths`, if present, is a coarse pre-filter over the changed files — a path
+   match narrows the candidates but still defers to `when` (a non-visual `.ts` under a broad path glob is not
+   a visual change). A gate with no `when_paths` is judged by `when` alone. Don't run all gates by reflex;
+   don't skip a matching one.
+3. **Honour `preflight`** before its gate; a failing preflight aborts that gate.
 4. **Gate truth is the command's exit status / output — never an agent's prose claim** that it passed.
-5. Follow `flow` for the order of actions (e.g. inspect the diff → run matching gates → commit).
+5. Follow `flow` for the order of actions: bare strings are agent actions (inspect-diff / commit / push),
+   `run-gates: [...]` runs gates by category or the `matched` selector.
 
 > **Future (backlogged): an executable runner.** `when_paths` is included so a thin runner could, given a
 > changed-file set, run exactly the matching gates (and back a pre-commit/-push hook). Until then the
@@ -76,7 +84,7 @@ gates:
   - id: vrt
     category: safety-specific
     when: a styled/visual source file changes
-    when_paths: ["**/*.svelte", "**/*.css", "packages/ui/**", "src/**"]
+    when_paths: ["**/*.svelte", "**/*.css"]   # extension-filtered: visual files only, not all of src/
     preflight: docker info >/dev/null 2>&1 || (nohup dockerd >/tmp/dockerd.log 2>&1 &)  # debug-troubleshooting §10
     run: scripts/vrt.sh
 
