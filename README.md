@@ -18,14 +18,22 @@ skills/
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
                                         #   subagent-framework + independent-expert-review reference
-  agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout and the path→permission map
-                                        #   (.agents/access.yaml) that agent-access scopes resolve against
+  agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout, the path→permission map
+                                        #   (.agents/access.yaml), and the ship-a-working-devcontainer convention
   agent-access/SKILL.md                 # access-scope vocabulary (read-only/propose/write:<globs>/write) +
                                         #   isolation (inline vs sub-agent); resolves against access.yaml
-registry.yaml                           # published index (per-skill version, sha256, requires, deprecated)
+  propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
+  review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
+  end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
+registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   sync-agent-skills.sh                  # canonical vendoring tool (copy into your repo; writes the lockfile)
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
+  validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
+  drift-check.sh                        # consumer: vendored skills vs lockfile (hand-edit guard; pre-push)
+  update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
+  setup.sh                              # one-time: register the registry.yaml regenerate-on-conflict driver
+.github/workflows/ci.yml                # registry freshness · validate-skill · test harnesses · shellcheck
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```
 
@@ -79,6 +87,16 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > `bun run test:unit --run`; safety-specific `bun run test:stories` (axe) + `scripts/vrt.sh`. **Log every
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
+
+## Contributing a skill (propose → review)
+
+This repo is the **hub**. To contribute a project-agnostic skill (or a fix), follow the **propose-skill**
+skill: author `skills/<name>/SKILL.md` with the required frontmatter (`name`, `description`, semver
+`version`, optional `requires`/`default-access`/`isolation`), run `scripts/build-registry.sh`, self-check
+with `scripts/validate-skill.sh <name>`, and open a PR. A maintainer accepts it via the
+**review-skill-proposal** skill (the `validate-skill.sh` mechanical checks + a judgment pass: genuinely
+general, non-duplicative, safe, honestly versioned). On merge, the registry bump notifies downstream
+consumers.
 
 ## Versioning, the registry & updates
 

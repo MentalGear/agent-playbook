@@ -12,7 +12,10 @@ skills:
     sha256: 5ae059eb80ab44a15459ada742dc02a91a29616b4f40d1af1a84d20eb3087bf6
   agent-repo-layout:
     version: 1.0.0
-    sha256: bcbcd6ac00ad934af10ce0cb14405c606b0acd4e67940dae43b349bc343e297a
+    sha256: 9261d3f583914235e5f82a17320eddaf72f1f17b7e676fd33e53af4fb135c058
+  end-of-round-report:
+    version: 1.0.0
+    sha256: 09c0fde667331118e30c8f86fbf5c56af98b3780ceafd4b5d167251b4a946c3b
   independent-expert-review:
     version: 1.0.0
     sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62
@@ -21,6 +24,13 @@ skills:
   project-gates:
     version: 1.0.0
     sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
+  propose-skill:
+    version: 1.0.0
+    sha256: 8dd88a9477f62ae6b9a985293865cd600a76da46324545f32f46ebe8216f8249
+    requires: [review-skill-proposal]
+  review-skill-proposal:
+    version: 1.0.0
+    sha256: ee5d2a69962ada94553521efdb365c99ec0ec22bdd92e851c7a3f055f9214828
   subagent-framework:
     version: 1.0.0
     sha256: d97ac62fe67fa2a897d9df156d6641223a9159659a8e5c4bf009d48abe5f110e

@@ -1,6 +1,6 @@
 ---
 name: agent-repo-layout
-description: Use when setting up a repo for agents, or when unsure where an agent-facing artifact belongs or whether you may write to a path. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log) and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against. The host fills access.yaml with its real paths; this skill defines the convention.
+description: Use when setting up a repo for agents, or when unsure where an agent-facing artifact belongs or whether you may write to a path. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log) and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, and the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
 version: 1.0.0
 ---
@@ -37,12 +37,14 @@ resolve against it; a delegation may never exceed the path's declared permission
 ```yaml
 # .agents/access.yaml — path → permission for agents/sub-agents
 paths:
+  - glob: "CLAUDE.md"           # the operating contract — propose a diff + get approval, never silent
+    permission: approval
   - glob: ".agents/skills/**"   # vendored — managed only by the sync script
     permission: read-only
-  - glob: ".agents/gates.yaml"
-    permission: read-only
-  - glob: ".agents/access.yaml"
-    permission: read-only
+  - glob: ".agents/gates.yaml"  # part of the contract
+    permission: approval
+  - glob: ".agents/access.yaml" # changes the permission model itself
+    permission: approval
   - glob: ".agents/scratch/**"
     permission: write
   - glob: "docs/research/**"
@@ -58,10 +60,52 @@ paths:
 - **append** — add entries/files; don't rewrite or delete existing history (logs, research, troubleshooting).
 - **write** — free to create/modify/delete (scratch).
 - **scoped** — defer to the delegation's declared access scope (`agent-access`); source code lives here.
+- **approval** — may be changed only by **showing the proposed diff and getting explicit human approval
+  first** (never silently). For the **operating contract** — `CLAUDE.md`, `.agents/access.yaml`,
+  `.agents/gates.yaml` — where a change alters how every future agent behaves. (Same spirit as
+  `review-skill-proposal`: a model validates and proposes, a human accepts.)
 
 ## How an agent uses this
 1. **Placing an artifact?** Put it in the role's standard folder (a debugging finding → `docs/debug/`; a
    research capture → `docs/research/`; a delegation entry → `docs/subagent-log/`; throwaway → scratch).
 2. **About to write a path?** Check `.agents/access.yaml`: `read-only` → don't; `append` → add, don't rewrite;
-   `write` → free; `scoped` → only within the delegation's `agent-access` scope.
+   `write` → free; `scoped` → only within the delegation's `agent-access` scope; `approval` → show the diff
+   and get a human yes first (the contract files).
 3. **Never hand-edit `.agents/skills/**`** — it's sync-managed and carries a "do not edit here" header.
+
+## Ship a working devcontainer
+**An agent-ready repo boots clone-to-ready.** Ship a `devcontainer.json` so a fresh clone reaches a
+runnable state — toolchain installed, tool binaries on `PATH`, dependencies installed, and (if the project
+verifies in a browser) the browser present — **with no manual steps**. Agents in cloud/web environments
+depend on this; "works on my machine" silently breaks them. The acceptance bar: a **cold rebuild** (no
+cache) reaches green run/test/build + a started dev server, and any best-effort step (a heavy download)
+fails soft without failing creation. A devcontainer that's never been cold-built doesn't work yet.
+
+Gotchas that have cost real time:
+- **Install dir must be user-writable** — point the installer at the container user's home via its env var
+  (`BUN_INSTALL`, `CARGO_HOME`, `PNPM_HOME`, …).
+- **`PATH` goes in `remoteEnv`, not `containerEnv`** — only there does `${containerEnv:PATH}` resolve against
+  the real PATH; a `containerEnv` PATH is passed literally to `docker run` and clobbers it.
+- **Inline the installer's env var** at the command so it can't read a stale `containerEnv` value at create.
+- **Use full tool paths in `postCreateCommand`** — `remoteEnv`'s PATH may not be active yet during create.
+- **Make heavy/optional installs best-effort** (`… || echo skipped`) so a flaky download can't fail create.
+
+A known-good reference (Bun + browser verification) resolving all of the above:
+```jsonc
+{
+  "name": "example (Bun + browser verification)",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
+  "features": { "ghcr.io/devcontainers/features/git:1": {} },
+  // user-writable install dir; PLAYWRIGHT_BROWSERS_PATH for the verification browser
+  "containerEnv": { "BUN_INSTALL": "/home/node/.bun", "PLAYWRIGHT_BROWSERS_PATH": "/opt/pw-browsers" },
+  // PATH in remoteEnv so ${containerEnv:PATH} resolves against the container's real PATH
+  "remoteEnv": { "PATH": "/home/node/.bun/bin:${containerEnv:PATH}" },
+  // install the toolchain once; inline BUN_INSTALL so the installer can't read a stale value
+  "onCreateCommand": "curl -fsSL https://bun.sh/install | BUN_INSTALL=/home/node/.bun bash",
+  // deps + (best-effort) the browser; full paths since remoteEnv PATH isn't active yet
+  "postCreateCommand": "/home/node/.bun/bin/bun install && (/home/node/.bun/bin/bunx playwright install --with-deps chromium || echo 'chromium install skipped')",
+  "forwardPorts": [5173],
+  "portsAttributes": { "5173": { "label": "Vite dev server", "onAutoForward": "openBrowser" } },
+  "customizations": { "vscode": { "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"] } }
+}
+```
