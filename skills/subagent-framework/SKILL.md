@@ -2,6 +2,8 @@
 name: subagent-framework
 description: Use when delegating work to subagents — deciding whether a task is worth delegating, writing the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
 user-invocable: false
+version: 1.0.0
+requires: [project-gates, agent-access]
 ---
 
 # Subagent framework — delegate work, keep the judgment

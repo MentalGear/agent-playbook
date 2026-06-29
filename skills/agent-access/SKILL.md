@@ -2,6 +2,8 @@
 name: agent-access
 description: Use when delegating to a sub-agent and deciding what it may touch and how isolated it runs, or when authoring a skill that should default to running in a fresh sub-agent. Defines the access-scope vocabulary (read-only / read+history / propose / write:<globs> / write, plus a network modifier) and the isolation model (inline vs sub-agent). Scopes resolve against the repo's .agents/access.yaml (agent-repo-layout); a delegation may never exceed a path's declared permission. subagent-framework's task-contract Constraints and independent-expert-review's read-only stance both use this vocabulary.
 user-invocable: false
+version: 1.0.0
+requires: [agent-repo-layout]
 ---
 
 # Agent access & isolation — what a sub-agent may touch, and how isolated it runs

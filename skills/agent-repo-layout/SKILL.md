@@ -2,6 +2,7 @@
 name: agent-repo-layout
 description: Use when setting up a repo for agents, or when unsure where an agent-facing artifact belongs or whether you may write to a path. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log) and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against. The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
+version: 1.0.0
 ---
 
 # Agent repo layout — where things live, and what may write where

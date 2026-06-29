@@ -2,6 +2,7 @@
 name: project-gates
 description: Use when setting up a repo's quality gates, or deciding which gates to run before a change lands. Defines the structured gates manifest a host repo declares (e.g. .agents/gates.yaml) — gate categories (always / logic / safety-specific), each gate's trigger + command, and the ordered flow of actions between them (inspect-diff → gates → commit). This is the single source for the gate schema that the subagent-framework skill (which gates run before work lands) and independent-expert-review skill (verification gates) both reference. The host writes the manifest; this skill defines its shape.
 user-invocable: false
+version: 1.0.0
 ---
 
 # Project gates — the structured gate manifest
