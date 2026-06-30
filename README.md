@@ -27,10 +27,10 @@ skills/
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
-  sync-agent-skills.sh                  # canonical vendoring tool (copy into your repo; writes the lockfile)
+  lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
+  sync-agent-skills.sh                  # canonical vendoring tool — DETERMINISTIC (copy into your repo)
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
   validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
-  drift-check.sh                        # consumer: vendored skills vs lockfile (hand-edit guard; pre-push)
   update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
   setup.sh                              # one-time: register the registry.yaml regenerate-on-conflict driver
 .github/workflows/ci.yml                # registry freshness · validate-skill · test harnesses · shellcheck
@@ -62,16 +62,19 @@ ephemeral fresh-clone web/sandbox containers, no submodule-init or egress-proxy 
 **Use the provided sync script — don't hand-copy.** [`scripts/sync-agent-skills.sh`](scripts/sync-agent-skills.sh)
 is the canonical vendoring tool; copying files by hand drifts and loses the pin. Steps:
 
-1. **Copy the script** into your repo at `scripts/sync-agent-skills.sh`; trim `SKILLS=(…)` to the skills you
-   want.
-2. **First sync with a pin:** `PLAYBOOK_REF=<sha> scripts/sync-agent-skills.sh`. Thereafter the pin lives in
-   **`.agents/skills-lock.json`** (not baked into the script) — re-run with no args to stay at the locked
-   pin, or `PLAYBOOK_REF=<new-sha>` to bump it deliberately.
-3. The script vendors each whole skill directory into `.agents/skills/<name>/` (incl. files like
-   `reference.md`), injects a provenance header into each `SKILL.md`, creates the `.claude/skills/` symlinks
-   the harness discovers, and writes the lockfile (pin + per-skill version + content hashes). Never hand-edit
-   vendored files — they carry a "do not edit here" header, the lockfile records their hash (so the
-   drift-check catches edits), and they're clobbered on the next sync.
+1. **Copy `scripts/sync-agent-skills.sh` + `scripts/lib.sh`** into your repo's `scripts/`; trim `SKILLS=(…)`
+   to the skills you want (and list any skills vendored from a *different* upstream in `EXTERNAL_SKILLS=(…)`
+   so they're exempt from pruning).
+2. **First sync needs no pin:** run `scripts/sync-agent-skills.sh`. It resolves the hub's default branch to a
+   concrete 40-char SHA, verifies that SHA is an **ancestor** of the default branch (rejects a fork-only/off-
+   branch pin), and records it in **`.agents/skills-lock.json`** — review the resolved SHA + `playbook_repo`
+   in the diff. Re-run with no args to stay at the locked pin; `PLAYBOOK_REF=<new-sha>` to bump it.
+3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
+   into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
+   and writes the lockfile (pin + per-skill version). **Integrity is a git-diff gate, not a hash:** `sync` is
+   deterministic, so CI runs `scripts/sync-agent-skills.sh && git diff --exit-code -- .agents .claude` — any
+   hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces a diff and fails the build.
+   Never hand-edit vendored files; they're clobbered on the next sync.
 4. **Declare your gates** in a `project-gates` manifest at `.agents/gates.yaml` (categories, triggers,
    commands, flow — see the `project-gates` skill for the schema). This is the structured source of truth for
    your gates; see [`skills/project-gates/SKILL.md`](skills/project-gates/SKILL.md) for a filled example.
@@ -104,9 +107,10 @@ Each skill carries a **`version`** (semver) in its frontmatter. **`registry.yaml
 `scripts/build-registry.sh`) is the published index — per skill: `version`, content `sha256`, `requires`,
 and `deprecated?`. Downstream consumers compare their `.agents/skills-lock.json` against `registry.yaml` to
 find **updated** skills (locked version behind the registry), **new** skills (in the registry, not yet
-vendored), and **deprecations** — that's the `update-check`. A separate `drift-check` recomputes the
-vendored files' hashes against the lockfile to catch hand-edits. Bump a skill's `version` when you change it,
-re-run `build-registry.sh`, and commit `registry.yaml`.
+vendored), and **deprecations** — that's the `update-check`. Hand-edits to vendored files are caught by the
+**integrity gate**, not a separate hash: `sync` is deterministic, so CI's `sync && git diff --exit-code`
+reproduces any tampering (or an orphan, or an injected symlink) as drift. Bump a skill's `version` when you
+change it, re-run `build-registry.sh`, and commit `registry.yaml`.
 
 ## Pinning
 

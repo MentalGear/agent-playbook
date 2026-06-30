@@ -35,8 +35,7 @@ else
   resolved_ref_sha="$(git -C "$tmp/ap" rev-parse HEAD 2>/dev/null || true)"
 fi
 
-# locked skills, US-separated rows: name<US>version<US>sha256_source<US>sha256_vendored
-# (see lib.sh lock_skills — US, not tab, so empty fields don't collapse).
+# locked skills, US-separated rows: name<US>version (see lib.sh lock_skills).
 lock_versions="$(lock_skills "$lock")"
 # registry versions + deprecations:  name<TAB>version<TAB>deprecated?
 reg_data="$(awk '
@@ -46,7 +45,7 @@ reg_data="$(awk '
   END { for (i=1;i<=n;i++){k=order[i]; printf "%s\t%s\t%s\n", k, ver[k], dep[k]} }
 ' "$reg")"
 
-lv() { printf '%s\n' "$lock_versions" | while IFS=$'\x1f' read -r n v _s _vd; do [ "$n" = "$1" ] && { printf '%s' "$v"; return; }; done; }
+lv() { printf '%s\n' "$lock_versions" | while IFS=$'\x1f' read -r n v; do [ "$n" = "$1" ] && { printf '%s' "$v"; return; }; done; }
 newer() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$2" ] && [ "$1" != "$2" ]; }
 
 updated=(); new=(); deprecated=()

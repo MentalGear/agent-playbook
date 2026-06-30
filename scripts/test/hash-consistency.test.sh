@@ -22,7 +22,7 @@ lib="$SRC/lib.sh"
 defs="$(grep -cE "$DEF_RE" "$lib" 2>/dev/null || true)"
 [ "${defs:-0}" -eq 1 ] && ok "lib.sh defines skill_dir_hash() exactly once" || no "lib.sh should define skill_dir_hash() once (found ${defs:-0})"
 
-files=(sync-agent-skills.sh drift-check.sh build-registry.sh validate-skill.sh verify-pin.sh update-check.sh)
+files=(sync-agent-skills.sh build-registry.sh validate-skill.sh update-check.sh)
 inline=0; unsourced=0
 for f in "${files[@]}"; do
   p="$SRC/$f"
