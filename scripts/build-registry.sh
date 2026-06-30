@@ -4,7 +4,8 @@
 # Run after changing any skill, and commit the result. CI can assert it's up to date
 # (build-registry then `git diff --exit-code`).
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "build-registry: cannot source lib.sh" >&2; exit 3; }
 shopt -s nullglob
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"

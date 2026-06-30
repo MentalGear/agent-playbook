@@ -5,7 +5,8 @@
 # pre-push / pre-commit hook. Exits non-zero on drift.
 # Copy this into your repo at scripts/drift-check.sh alongside sync-agent-skills.sh + lib.sh.
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "drift-check: cannot source lib.sh" >&2; exit 3; }
 require_tools jq
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$root/.agents/skills-lock.json"
@@ -16,8 +17,8 @@ lock="$root/.agents/skills-lock.json"
 jq -e . "$lock" >/dev/null 2>&1 || { echo "drift-check: $lock is not valid JSON." >&2; exit 2; }
 
 drift=0; checked=0; tracked=""
-# name<TAB>version<TAB>sha256_source<TAB>sha256_vendored  (parsed by jq, not line-matching)
-while IFS=$'\t' read -r name _ver _src want; do
+# name<US>version<US>sha256_source<US>sha256_vendored  (jq + US separator; see lib.sh lock_skills)
+while IFS=$'\x1f' read -r name _ver _src want; do
   [ -z "$name" ] && continue
   tracked="$tracked $name"
   d="$root/.agents/skills/$name"

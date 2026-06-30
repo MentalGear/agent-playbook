@@ -29,11 +29,21 @@ skill_dir_hash() {
 }
 
 # --- Lockfile (.agents/skills-lock.json) readers — jq, not sed/grep ----------------------------
+# `// ""` coalesces a missing field to empty ON PURPOSE: an empty pin then fails the 40-char-SHA
+# regex in verify-pin, and an empty hash can never equal a real 64-hex dir-hash, so the downstream
+# regex/equality checks are the real gate. Don't "simplify" those checks away.
 lock_pin()  { jq -r '.pinned_sha   // ""' "$1"; }   # the pinned commit SHA
 lock_repo() { jq -r '.playbook_repo // ""' "$1"; }   # the hub repo URL
-# One TSV row per skill: name<TAB>version<TAB>sha256_source<TAB>sha256_vendored
+# One row per skill, fields joined by US (0x1f, ASCII unit separator):
+#   name<US>version<US>sha256_source<US>sha256_vendored
+# Read with `IFS=$'\x1f' read -r …`. US is deliberately NOT a tab: tab is IFS-whitespace, so
+# `IFS=$'\t' read` would COLLAPSE an empty field (e.g. a missing version) and shift later columns;
+# US is non-whitespace, so empty fields are preserved positionally. None of our values (skill
+# names [A-Za-z0-9_-], semver, hex hashes) can contain US, so join() needs no escaping.
+# `(.skills // {})` so a lockfile missing the skills key yields zero rows (caught by the callers'
+# checked==0 guard) instead of a raw jq "null has no keys" error.
 lock_skills() {
-  jq -r '.skills | to_entries[]
+  jq -r '(.skills // {}) | to_entries[]
          | [ .key, (.value.version//""), (.value.sha256_source//""), (.value.sha256_vendored//"") ]
-         | @tsv' "$1"
+         | join("\u001f")' "$1"
 }

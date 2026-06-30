@@ -12,7 +12,8 @@
 #   scripts/verify-pin.sh                                  # clone the hub at the pin
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/verify-pin.sh   # offline: a local checkout AT the pin
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "verify-pin: cannot source lib.sh" >&2; exit 3; }
 require_tools git jq
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$root/.agents/skills-lock.json"
@@ -56,8 +57,8 @@ fi
 reg="$src/registry.yaml"
 
 fails=0; checked=0
-# name<TAB>version<TAB>sha256_source<TAB>sha256_vendored  (jq, not line-matching)
-while IFS=$'\t' read -r name _ver want_src _vend; do
+# name<US>version<US>sha256_source<US>sha256_vendored  (jq + US separator; see lib.sh lock_skills)
+while IFS=$'\x1f' read -r name _ver want_src _vend; do
   [ -z "$name" ] && continue
   checked=$((checked+1))   # count PARSED entries, not successes — so a fully-tampered lockfile
                            # reports "does not match" (exit 1), not "malformed lockfile" (exit 2).

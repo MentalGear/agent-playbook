@@ -16,7 +16,8 @@
 # hashes). The lockfile is read by the drift-check (local edits) and update-check
 # (vs the upstream registry). Never hand-edit vendored files — re-run this instead.
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "sync: cannot source lib.sh" >&2; exit 3; }
 require_tools git jq
 
 PLAYBOOK_REPO="${AGENT_PLAYBOOK_REPO:-https://github.com/MentalGear/agent-playbook.git}"

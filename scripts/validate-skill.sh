@@ -7,7 +7,8 @@
 # hub only with explicit human approval (see the review-skill-proposal skill).
 # A `write` default-access hard-fails unless the human sets ALLOW_WRITE_DEFAULT=1.
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "validate-skill: cannot source lib.sh" >&2; exit 3; }
 shopt -s nullglob
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"

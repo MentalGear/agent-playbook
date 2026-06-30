@@ -8,7 +8,8 @@
 #                                                         # shallow --branch clone needs a branch/tag)
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/update-check.sh   # offline, from a local checkout
 set -uo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "update-check: cannot source lib.sh" >&2; exit 3; }
 require_tools git jq
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$root/.agents/skills-lock.json"
@@ -34,8 +35,9 @@ else
   resolved_ref_sha="$(git -C "$tmp/ap" rev-parse HEAD 2>/dev/null || true)"
 fi
 
-# locked versions:  name<TAB>version   (jq, not line-matching)
-lock_versions="$(lock_skills "$lock" | cut -f1,2)"
+# locked skills, US-separated rows: name<US>version<US>sha256_source<US>sha256_vendored
+# (see lib.sh lock_skills — US, not tab, so empty fields don't collapse).
+lock_versions="$(lock_skills "$lock")"
 # registry versions + deprecations:  name<TAB>version<TAB>deprecated?
 reg_data="$(awk '
   /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { name=$1; sub(/:$/,"",name); ver[name]=""; dep[name]="" ; order[++n]=name; next }
@@ -44,7 +46,7 @@ reg_data="$(awk '
   END { for (i=1;i<=n;i++){k=order[i]; printf "%s\t%s\t%s\n", k, ver[k], dep[k]} }
 ' "$reg")"
 
-lv() { printf '%s\n' "$lock_versions" | awk -F'\t' -v k="$1" '$1==k{print $2}'; }
+lv() { printf '%s\n' "$lock_versions" | while IFS=$'\x1f' read -r n v _s _vd; do [ "$n" = "$1" ] && { printf '%s' "$v"; return; }; done; }
 newer() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$2" ] && [ "$1" != "$2" ]; }
 
 updated=(); new=(); deprecated=()

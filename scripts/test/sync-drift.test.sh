@@ -105,6 +105,23 @@ locked_pin="$(jq -r '.pinned_sha' "$cons4/.agents/skills-lock.json" 2>/dev/null)
 { [ $rc -eq 0 ] && [ "$locked_pin" = "$hub4sha" ]; } && ok "first-pin (clone path): pins the hub default-branch HEAD" || no "clone-path first-pin should pin default HEAD (rc=$rc pin=$locked_pin want=$hub4sha): $out"
 rm -rf "$hub4" "$cons4"
 
+# 10) require_tools: a missing hard dep (jq) => exit 3 with an install hint
+nobin="$(mktemp -d)"; ln -s "$(command -v bash)" "$nobin/bash"
+out="$(PATH="$nobin" bash -c ". '$SRC/lib.sh'; require_tools jq" 2>&1)"; rc=$?
+{ [ "$rc" -eq 3 ] && grep -qi "jq" <<<"$out"; } && ok "require_tools: missing jq => exit 3 + install hint" || no "missing jq should exit 3 + hint (rc=$rc): $out"
+rm -rf "$nobin"
+
+# 11) jq readers handle MULTIPLE skills + a missing optional field (// "" fallback)
+c="$(mktemp -d)"; mkdir -p "$c/.agents/skills/foo" "$c/.agents/skills/bar"; putscripts "$c" "$SRC/drift-check.sh"
+printf -- '---\nname: foo\n---\n# foo\n' > "$c/.agents/skills/foo/SKILL.md"
+printf -- '---\nname: bar\n---\n# bar\n' > "$c/.agents/skills/bar/SKILL.md"
+hfoo="$(dirhash "$c/.agents/skills/foo")"; hbar="$(dirhash "$c/.agents/skills/bar")"
+# bar deliberately omits "version" to exercise the // "" fallback in lock_skills
+printf '{\n  "playbook_repo": "x",\n  "pinned_sha": "deadbeef",\n  "skills": {\n    "foo": { "version": "1.0.0", "sha256_source": "%s", "sha256_vendored": "%s" },\n    "bar": { "sha256_source": "%s", "sha256_vendored": "%s" }\n  }\n}\n' "$hfoo" "$hfoo" "$hbar" "$hbar" > "$c/.agents/skills-lock.json"
+out="$(cd "$c" && bash scripts/drift-check.sh 2>&1)"; rc=$?
+{ [ "$rc" -eq 0 ] && grep -q "2 tracked" <<<"$out"; } && ok "jq readers handle multi-skill + missing optional field" || no "multi-skill drift-check should be clean, 2 tracked (rc=$rc): $out"
+rm -rf "$c"
+
 echo "---"
 echo "sync-drift: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]
