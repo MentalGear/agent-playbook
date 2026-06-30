@@ -97,6 +97,32 @@ out="$(PATH="$nobin" bash -c ". '$SRC/lib.sh'; require_tools jq" 2>&1)"; rc=$?
 { [ "$rc" -eq 3 ] && grep -qi "jq" <<<"$out"; } && ok "missing jq => exit 3 + install hint" || no "missing jq should exit 3 (rc=$rc)"
 rm -rf "$nobin"
 
+# 12) rogue extra file: an injected non-SKILL.md file in a vendored dir is removed by re-sync
+#     (exercises `rm -rf "$dest"`, which tamper-restore on SKILL.md alone does not)
+cons="$(mkcons foo)"; ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+echo "backdoor" > "$cons/.agents/skills/foo/backdoor.md"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+[ ! -e "$cons/.agents/skills/foo/backdoor.md" ] && ok "re-sync removes an injected rogue file (rm -rf \$dest)" || no "rogue file survived re-sync"
+rm -rf "$cons"
+
+# 13) the REAL CI gate (git status --porcelain): clean passes, a committed tamper fails
+cons="$(mkcons foo)"; ( cd "$cons" && git init -q && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 && GI add -A && GI commit -qm vendor )
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+clean_out="$(cd "$cons" && git status --porcelain -- .agents .claude)"
+( cd "$cons" && echo "EVIL" >> .agents/skills/foo/SKILL.md && GI commit -aqm tamper )
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+tamper_out="$(cd "$cons" && git status --porcelain -- .agents .claude)"
+{ [ -z "$clean_out" ] && [ -n "$tamper_out" ]; } && ok "git-status gate: clean passes, committed tamper fails" || no "gate wrong (clean='$clean_out' tamper='$tamper_out')"
+rm -rf "$cons"
+
+# 14) the gate must use `git status`, not `git diff --exit-code`: the latter MISSES untracked files
+cons="$(mkcons foo)"; ( cd "$cons" && git init -q && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 && GI add -A && GI commit -qm vendor )
+echo "untracked" > "$cons/.agents/skills/foo/sneaky.md"
+st="$(cd "$cons" && git status --porcelain -- .agents .claude)"
+( cd "$cons" && git diff --exit-code -- .agents .claude >/dev/null 2>&1 ); dr=$?
+{ [ -n "$st" ] && [ "$dr" -eq 0 ]; } && ok "git status catches an untracked file that git diff --exit-code misses" || no "untracked-file gate justification wrong (status='$st' diff_rc=$dr)"
+rm -rf "$cons"
+
 rm -rf "$hub"
 echo "---"
 echo "sync: $pass passed, $failed failed."

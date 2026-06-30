@@ -48,7 +48,7 @@ fi
 
 # --- Obtain the source tree at the pinned ref ----------------------------------------------------
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+trap 'rm -rf "$work" "$lockfile.tmp"' EXIT
 if [[ -n "${AGENT_PLAYBOOK_SRC:-}" ]]; then
   src="$AGENT_PLAYBOOK_SRC"
   resolved_sha="$(git -C "$src" rev-parse HEAD)"
@@ -82,7 +82,11 @@ else
         echo "       Refusing a fork-only/off-branch pin. Set ALLOW_NONDEFAULT_PIN=1 to override." >&2
         exit 2; }
     else
-      echo "WARN: could not resolve the hub default branch — skipping the ancestry check." >&2
+      # Fail closed: if we can't resolve the default branch we can't run the ancestry check, so
+      # don't silently accept the pin. Bypass deliberately with ALLOW_NONDEFAULT_PIN=1.
+      echo "ERROR: could not resolve the hub default branch for the ancestry check." >&2
+      echo "       Set ALLOW_NONDEFAULT_PIN=1 to bypass (only if you trust this pin)." >&2
+      exit 2
     fi
   fi
 fi
@@ -99,6 +103,12 @@ lock_entries=()
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
 }
+
+# Pre-validate every SKILL exists at the source BEFORE mutating the vendor tree, so a typo in
+# SKILLS can't leave a half-applied tree (some skills re-copied, the rest stale).
+for skill in "${SKILLS[@]}"; do
+  [[ -f "$src/skills/$skill/SKILL.md" ]] || { echo "ERROR: $skill missing in source ($src/skills/$skill/SKILL.md)" >&2; exit 1; }
+done
 
 for skill in "${SKILLS[@]}"; do
   src_skill_dir="$src/skills/$skill"
@@ -142,8 +152,13 @@ fi
 if [ -d "$link_dir" ]; then
   for l in "$link_dir"/*; do
     { [ -e "$l" ] || [ -L "$l" ]; } || continue; n="$(basename "$l")"
-    case "$keep" in *" $n "*) : ;; *) rm -f "$l" ;; esac
+    case "$keep" in *" $n "*) : ;; *) rm -rf "$l" ;; esac   # rm -rf: also clears a real-dir orphan
   done
+fi
+
+# Sort skill entries so the lockfile is deterministic regardless of the SKILLS array order.
+if [ "${#lock_entries[@]}" -gt 0 ]; then
+  mapfile -t lock_entries < <(printf '%s\n' "${lock_entries[@]}" | LC_ALL=C sort)
 fi
 
 # --- Write the lockfile atomically (pin + per-skill version; NO hashes — git is the content check) -
