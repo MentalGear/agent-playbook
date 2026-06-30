@@ -9,7 +9,7 @@ ok() { echo "  ✓ $1"; pass=$((pass+1)); }
 no() { echo "  ✗ $1" >&2; failed=$((failed+1)); }
 
 # same dir-hash formula as the scripts (to build expected lockfile values)
-dirhash() { ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
+dirhash() { ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
   printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 ); }
 
 mkconsumer() {  # a consumer with one vendored multi-file skill + a matching lockfile
@@ -59,6 +59,33 @@ locked="$(sed -n 's/.*"foo":.*"sha256_vendored":[[:space:]]*"\([0-9a-f]*\)".*/\1
 expect="$(dirhash "$cons2/.agents/skills/foo")"
 [ -n "$locked" ] && [ "$locked" = "$expect" ] && ok "sync lockfile sha256_vendored is the whole-dir hash" || no "lockfile vendored hash should equal dir-hash (locked=$locked expect=$expect)"
 rm -rf "$hub" "$cons" "$cons2"
+
+# 6) drift-check refuses a false 'clean' on a zero-entry lockfile (panel: false-clean gate)
+c="$(mktemp -d)"; mkdir -p "$c/scripts" "$c/.agents/skills"
+cp "$SRC/drift-check.sh" "$c/scripts/"
+printf '{\n  "playbook_repo": "x",\n  "pinned_sha": "deadbeef",\n  "skills": {}\n}\n' > "$c/.agents/skills-lock.json"
+( cd "$c" && bash scripts/drift-check.sh >/dev/null 2>&1 ); [ $? -ne 0 ] && ok "drift-check refuses false-clean on an empty lockfile" || no "empty lockfile must not pass as clean"
+rm -rf "$c"
+
+# 7) drift-check warns about a vendored dir NOT in the lockfile, but still passes (panel: coverage gap)
+c="$(mkconsumer)"
+mkdir -p "$c/.agents/skills/other"; printf -- '---\nname: other\n---\n\n# other\n' > "$c/.agents/skills/other/SKILL.md"
+out="$(cd "$c" && bash scripts/drift-check.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && grep -qi "absent from the lockfile" <<<"$out"; } && ok "drift-check warns on an untracked vendored dir, still passes" || no "untracked dir should warn + pass (rc=$rc): $out"
+rm -rf "$c"
+
+# 8) first-pin automation: no PLAYBOOK_REF + no lockfile -> resolves local HEAD and pins it
+hub3="$(mktemp -d)"; mkdir -p "$hub3/scripts" "$hub3/skills/foo"
+cp "$SRC/sync-agent-skills.sh" "$SRC/build-registry.sh" "$hub3/scripts/"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hub3/skills/foo/SKILL.md"
+( cd "$hub3" && git init -q && git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -qm init )
+hub3sha="$(git -C "$hub3" rev-parse HEAD)"
+cons3="$(mktemp -d)"; mkdir -p "$cons3/scripts"; cp "$SRC/sync-agent-skills.sh" "$cons3/scripts/"
+sed -i 's/^SKILLS=(.*)$/SKILLS=(foo)/' "$cons3/scripts/sync-agent-skills.sh"
+( cd "$cons3" && AGENT_PLAYBOOK_SRC="$hub3" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); rc=$?
+locked_pin="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cons3/.agents/skills-lock.json" 2>/dev/null)"
+{ [ $rc -eq 0 ] && [ "$locked_pin" = "$hub3sha" ]; } && ok "first-pin: no-pin sync resolves & pins local HEAD" || no "first-pin should pin resolved HEAD (rc=$rc pin=$locked_pin want=$hub3sha)"
+rm -rf "$hub3" "$cons3"
 
 echo "---"
 echo "sync-drift: $pass passed, $failed failed."

@@ -7,6 +7,10 @@ set -euo pipefail
 shopt -s nullglob
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+# Pin collation so the `skills/*/` glob order (and thus registry.yaml ordering) is identical
+# across machines/locales — otherwise a non-C dev regenerates a reordered file that CI's
+# `git diff --exit-code` then flags as stale. (skill_dir_hash already pins LC_ALL=C internally.)
+export LC_ALL=C
 out="registry.yaml"
 
 fm_field()  { printf '%s\n' "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -1; }
@@ -16,7 +20,7 @@ yesc()      { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }   # escape for 
 # not just SKILL.md. MUST stay byte-identical to the copies in sync-agent-skills.sh,
 # validate-skill.sh, and drift-check.sh, or hashes will disagree across the toolchain.
 skill_dir_hash() {
-  ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
+  ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
       printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
 }
 

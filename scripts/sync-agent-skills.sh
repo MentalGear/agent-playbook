@@ -2,10 +2,13 @@
 # Canonical sync script for vendoring agent-playbook skills into a consuming repo.
 #
 # Copy THIS file into your repo at scripts/sync-agent-skills.sh, set SKILLS to the
-# skills you want, and run it with a pin the first time:
-#     PLAYBOOK_REF=<sha> scripts/sync-agent-skills.sh
-# After that the pin lives in .agents/skills-lock.json — run with no args to re-sync
-# at the locked pin; pass PLAYBOOK_REF=<new-sha> to bump it.
+# skills you want, and run it. With no pin and no lockfile, the FIRST sync resolves a
+# starting commit (default branch 'main', or $PLAYBOOK_DEFAULT_REF) to a concrete 40-char
+# SHA and pins THAT — review the resolved SHA in the committed lockfile diff. Or pin
+# explicitly the first time:
+#     PLAYBOOK_REF=<sha-or-ref> scripts/sync-agent-skills.sh
+# After the first sync the pin lives in .agents/skills-lock.json — run with no args to
+# re-sync at the locked pin; pass PLAYBOOK_REF=<new-sha> to bump it.
 #
 # It vendors each whole skill directory into .agents/skills/<name>/ (with a provenance
 # header injected into SKILL.md), creates the .claude/skills/ symlinks the harness
@@ -27,9 +30,14 @@ PLAYBOOK_REF_ENV="${PLAYBOOK_REF:-}"   # was it explicitly requested this run?
 locked_sha=""
 [ -f "$lockfile" ] && locked_sha="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$lockfile" | head -1)"
 PLAYBOOK_REF="${PLAYBOOK_REF:-$locked_sha}"
+first_pin=0
 if [[ -z "$PLAYBOOK_REF" ]]; then
-  echo "ERROR: no pin. First sync: PLAYBOOK_REF=<sha> scripts/sync-agent-skills.sh" >&2
-  exit 2
+  # No explicit pin and no lockfile: resolve a default ref to a concrete commit and pin THAT
+  # (lockfile-on-first-sync — the npm/Cargo/Go/vendir model). The resolved 40-char SHA lands in
+  # the committed lockfile, i.e. a reviewable diff; we never store the moving ref as the pin.
+  PLAYBOOK_REF="${PLAYBOOK_DEFAULT_REF:-main}"
+  first_pin=1
+  echo "NOTE: no pin and no lockfile — resolving a starting commit from '$PLAYBOOK_REF' and pinning it." >&2
 fi
 
 # --- Obtain the source tree at the pinned ref ------------------------------------
@@ -55,6 +63,12 @@ else
   resolved_sha="$(git -C "$src" rev-parse HEAD)"
 fi
 
+# Pin must be a full 40-char commit SHA (a short SHA is ambiguous/collision-wider as a pin).
+[[ "$resolved_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: resolved pin '$resolved_sha' is not a full 40-char commit SHA." >&2; exit 2; }
+if [[ "$first_pin" == 1 ]]; then
+  echo "→ First sync: pinned $resolved_sha. REVIEW this SHA in $(basename "$lockfile") before committing." >&2
+fi
+
 mkdir -p "$vendor_dir" "$link_dir"
 lock_entries=()
 
@@ -64,7 +78,7 @@ fm_version() {  # read `version:` from a SKILL.md frontmatter
 # Deterministic hash of ALL files in a skill dir (path+content) — covers reference.md/assets.
 # MUST stay byte-identical to build-registry.sh / validate-skill.sh / drift-check.sh.
 skill_dir_hash() {
-  ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
+  ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
       printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
 }
 
@@ -95,6 +109,11 @@ for skill in "${SKILLS[@]}"; do
   ver="$(fm_version "$src_skill_dir/SKILL.md")"; ver="${ver:-0.0.0}"
   sha_source="$(skill_dir_hash "$src_skill_dir")"    # whole-dir hash (covers reference.md/assets)
   sha_vendored="$(skill_dir_hash "$dest")"
+  # A command-substitution failure inside the hash (e.g. a vanished file) does NOT trip `set -e`,
+  # so guard explicitly: refuse to write a lockfile with a bogus, non-sha256 hash.
+  for _h in "$sha_source" "$sha_vendored"; do
+    [[ "$_h" =~ ^[0-9a-f]{64}$ ]] || { echo "ERROR: $skill produced a non-sha256 dir-hash ('$_h') — aborting." >&2; exit 4; }
+  done
   lock_entries+=("    \"$skill\": { \"version\": \"$ver\", \"sha256_source\": \"$sha_source\", \"sha256_vendored\": \"$sha_vendored\" }")
   echo "  ✓ $skill ($ver)"
 done
