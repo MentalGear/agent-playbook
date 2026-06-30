@@ -4,7 +4,8 @@
 # UPDATED skills (registry version ahead of the lock), NEW skills (in the registry,
 # not vendored here), and DEPRECATED skills. Advisory only — never fails the build
 # (updates are adopted deliberately by bumping the pin and re-running sync).
-#   REGISTRY_REF=<branch|sha> scripts/update-check.sh     # default: main
+#   REGISTRY_REF=<branch|tag> scripts/update-check.sh     # default: main (NOT a commit SHA — the
+#                                                         # shallow --branch clone needs a branch/tag)
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/update-check.sh   # offline, from a local checkout
 set -uo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

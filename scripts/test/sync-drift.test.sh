@@ -87,6 +87,20 @@ locked_pin="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/
 { [ $rc -eq 0 ] && [ "$locked_pin" = "$hub3sha" ]; } && ok "first-pin: no-pin sync resolves & pins local HEAD" || no "first-pin should pin resolved HEAD (rc=$rc pin=$locked_pin want=$hub3sha)"
 rm -rf "$hub3" "$cons3"
 
+# 9) first-pin CLONE path (no AGENT_PLAYBOOK_SRC, no pin): clones the hub and pins its DEFAULT
+# branch HEAD — exercises the actual new code path (test #8 takes the local-checkout shortcut),
+# and confirms it doesn't assume a branch literally named 'main'.
+hub4="$(mktemp -d)"; mkdir -p "$hub4/skills/foo"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hub4/skills/foo/SKILL.md"
+( cd "$hub4" && git init -q && git -c user.email=t@t -c user.name=t add -A && git -c user.email=t@t -c user.name=t commit -qm init )
+hub4sha="$(git -C "$hub4" rev-parse HEAD)"
+cons4="$(mktemp -d)"; mkdir -p "$cons4/scripts"; cp "$SRC/sync-agent-skills.sh" "$cons4/scripts/"
+sed -i 's/^SKILLS=(.*)$/SKILLS=(foo)/' "$cons4/scripts/sync-agent-skills.sh"
+out="$(cd "$cons4" && AGENT_PLAYBOOK_REPO="$hub4" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+locked_pin="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$cons4/.agents/skills-lock.json" 2>/dev/null)"
+{ [ $rc -eq 0 ] && [ "$locked_pin" = "$hub4sha" ]; } && ok "first-pin (clone path): pins the hub default-branch HEAD" || no "clone-path first-pin should pin default HEAD (rc=$rc pin=$locked_pin want=$hub4sha): $out"
+rm -rf "$hub4" "$cons4"
+
 echo "---"
 echo "sync-drift: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]

@@ -32,12 +32,14 @@ locked_sha=""
 PLAYBOOK_REF="${PLAYBOOK_REF:-$locked_sha}"
 first_pin=0
 if [[ -z "$PLAYBOOK_REF" ]]; then
-  # No explicit pin and no lockfile: resolve a default ref to a concrete commit and pin THAT
-  # (lockfile-on-first-sync — the npm/Cargo/Go/vendir model). The resolved 40-char SHA lands in
-  # the committed lockfile, i.e. a reviewable diff; we never store the moving ref as the pin.
-  PLAYBOOK_REF="${PLAYBOOK_DEFAULT_REF:-main}"
+  # No explicit pin and no lockfile: pin a starting commit (lockfile-on-first-sync — the
+  # npm/Cargo/Go/vendir model). The resolved 40-char SHA lands in the committed lockfile, i.e. a
+  # reviewable diff; we never store a moving ref as the pin. With no PLAYBOOK_DEFAULT_REF we take
+  # the hub's DEFAULT branch (whatever it's named — not an assumed 'main'); set PLAYBOOK_DEFAULT_REF
+  # to override.
   first_pin=1
-  echo "NOTE: no pin and no lockfile — resolving a starting commit from '$PLAYBOOK_REF' and pinning it." >&2
+  PLAYBOOK_REF="${PLAYBOOK_DEFAULT_REF:-}"   # empty → the clone path uses the remote's default branch
+  echo "NOTE: no pin and no lockfile — resolving a starting commit and pinning it (review the resolved SHA AND playbook_repo in the lockfile diff)." >&2
 fi
 
 # --- Obtain the source tree at the pinned ref ------------------------------------
@@ -56,9 +58,15 @@ if [[ -n "${AGENT_PLAYBOOK_SRC:-}" ]]; then
   fi
   echo "Vendoring from local checkout $src @ $resolved_sha"
 else
-  echo "Cloning $PLAYBOOK_REPO @ $PLAYBOOK_REF …"
+  if [[ -n "$PLAYBOOK_REF" ]]; then
+    echo "Cloning $PLAYBOOK_REPO @ $PLAYBOOK_REF …"
+  else
+    echo "Cloning $PLAYBOOK_REPO (default branch) …"
+  fi
   git clone --quiet "$PLAYBOOK_REPO" "$work/ap"
-  git -C "$work/ap" checkout --quiet "$PLAYBOOK_REF"
+  # Empty PLAYBOOK_REF (first sync, no explicit ref) → keep the clone's default-branch HEAD,
+  # rather than assuming a branch named 'main' (which would hard-fail on a differently-named default).
+  if [[ -n "$PLAYBOOK_REF" ]]; then git -C "$work/ap" checkout --quiet "$PLAYBOOK_REF"; fi
   src="$work/ap"
   resolved_sha="$(git -C "$src" rev-parse HEAD)"
 fi
@@ -66,7 +74,7 @@ fi
 # Pin must be a full 40-char commit SHA (a short SHA is ambiguous/collision-wider as a pin).
 [[ "$resolved_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: resolved pin '$resolved_sha' is not a full 40-char commit SHA." >&2; exit 2; }
 if [[ "$first_pin" == 1 ]]; then
-  echo "→ First sync: pinned $resolved_sha. REVIEW this SHA in $(basename "$lockfile") before committing." >&2
+  echo "→ First sync: pinned $resolved_sha (from $PLAYBOOK_REPO). REVIEW this SHA AND playbook_repo in $(basename "$lockfile") before committing." >&2
 fi
 
 mkdir -p "$vendor_dir" "$link_dir"
@@ -75,8 +83,10 @@ lock_entries=()
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
 }
-# Deterministic hash of ALL files in a skill dir (path+content) — covers reference.md/assets.
-# MUST stay byte-identical to build-registry.sh / validate-skill.sh / drift-check.sh.
+# Deterministic hash of ALL regular files in a skill dir (path+content) — covers reference.md/assets.
+# MUST stay byte-identical to build-registry.sh / validate-skill.sh / drift-check.sh / verify-pin.sh
+# (enforced by scripts/test/hash-consistency.test.sh). Requires GNU coreutils (find -print0, sort -z,
+# sha256sum) + bash. NB: hashes regular files only (-type f); symlinks are not covered.
 skill_dir_hash() {
   ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
       printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
@@ -110,7 +120,8 @@ for skill in "${SKILLS[@]}"; do
   sha_source="$(skill_dir_hash "$src_skill_dir")"    # whole-dir hash (covers reference.md/assets)
   sha_vendored="$(skill_dir_hash "$dest")"
   # A command-substitution failure inside the hash (e.g. a vanished file) does NOT trip `set -e`,
-  # so guard explicitly: refuse to write a lockfile with a bogus, non-sha256 hash.
+  # so guard explicitly. NB: this catches an EMPTY/blank hash; it cannot detect a partial-stream
+  # corruption that still yields a 64-hex string — verify-pin (lockfile vs hub@pin) is that backstop.
   for _h in "$sha_source" "$sha_vendored"; do
     [[ "$_h" =~ ^[0-9a-f]{64}$ ]] || { echo "ERROR: $skill produced a non-sha256 dir-hash ('$_h') — aborting." >&2; exit 4; }
   done
