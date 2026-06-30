@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for the deterministic sync model (pivot): sync-agent-skills.sh + lib.sh.
-# The integrity gate is "sync is byte-idempotent; CI runs sync + git diff --exit-code", so these
-# tests assert determinism, prune, ancestry, first-pin, pin-honesty, and tamper-restore.
+# The integrity gate is "sync is byte-idempotent; CI runs sync then `git status --porcelain`"
+# (status, not `git diff --exit-code`, which misses untracked files — see case 13). These tests
+# assert determinism, prune, ancestry, first-pin, pin-honesty, tamper-restore, and the gate basis.
 # Run: bash scripts/test/sync.test.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -97,7 +98,7 @@ out="$(PATH="$nobin" bash -c ". '$SRC/lib.sh'; require_tools jq" 2>&1)"; rc=$?
 { [ "$rc" -eq 3 ] && grep -qi "jq" <<<"$out"; } && ok "missing jq => exit 3 + install hint" || no "missing jq should exit 3 (rc=$rc)"
 rm -rf "$nobin"
 
-# 12) rogue extra file: an injected non-SKILL.md file in a vendored dir is removed by re-sync
+# 11) rogue extra file: an injected non-SKILL.md file in a vendored dir is removed by re-sync
 #     (exercises `rm -rf "$dest"`, which tamper-restore on SKILL.md alone does not)
 cons="$(mkcons foo)"; ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
 echo "backdoor" > "$cons/.agents/skills/foo/backdoor.md"
@@ -105,7 +106,7 @@ echo "backdoor" > "$cons/.agents/skills/foo/backdoor.md"
 [ ! -e "$cons/.agents/skills/foo/backdoor.md" ] && ok "re-sync removes an injected rogue file (rm -rf \$dest)" || no "rogue file survived re-sync"
 rm -rf "$cons"
 
-# 13) the REAL CI gate (git status --porcelain): clean passes, a committed tamper fails
+# 12) the REAL CI gate (git status --porcelain): clean passes, a committed tamper fails
 cons="$(mkcons foo)"; ( cd "$cons" && git init -q && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 && GI add -A && GI commit -qm vendor )
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
 clean_out="$(cd "$cons" && git status --porcelain -- .agents .claude)"
@@ -115,13 +116,25 @@ tamper_out="$(cd "$cons" && git status --porcelain -- .agents .claude)"
 { [ -z "$clean_out" ] && [ -n "$tamper_out" ]; } && ok "git-status gate: clean passes, committed tamper fails" || no "gate wrong (clean='$clean_out' tamper='$tamper_out')"
 rm -rf "$cons"
 
-# 14) the gate must use `git status`, not `git diff --exit-code`: the latter MISSES untracked files
+# 13) the gate must use `git status`, not `git diff --exit-code`: the latter MISSES untracked files
 cons="$(mkcons foo)"; ( cd "$cons" && git init -q && AGENT_PLAYBOOK_SRC="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 && GI add -A && GI commit -qm vendor )
 echo "untracked" > "$cons/.agents/skills/foo/sneaky.md"
 st="$(cd "$cons" && git status --porcelain -- .agents .claude)"
 ( cd "$cons" && git diff --exit-code -- .agents .claude >/dev/null 2>&1 ); dr=$?
 { [ -n "$st" ] && [ "$dr" -eq 0 ]; } && ok "git status catches an untracked file that git diff --exit-code misses" || no "untracked-file gate justification wrong (status='$st' diff_rc=$dr)"
 rm -rf "$cons"
+
+# 14) ancestry FAILS CLOSED when the hub default branch can't be resolved (origin/HEAD dangling)
+hubd="$(mktemp -d)"; mkdir -p "$hubd/skills/foo"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hubd/skills/foo/SKILL.md"
+( cd "$hubd" && git init -q -b main && GI add -A && GI commit -qm init )
+dsha="$(git -C "$hubd" rev-parse HEAD)"
+( cd "$hubd" && git symbolic-ref HEAD refs/heads/ghost )   # dangling default → clone can't resolve origin/HEAD
+cons="$(mkcons foo)"
+out="$(cd "$cons" && PLAYBOOK_REF="$dsha" AGENT_PLAYBOOK_REPO="$hubd" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ "$rc" -eq 2 ] && grep -qi "could not resolve the hub default branch" <<<"$out"; } && ok "ancestry fails closed when origin/HEAD is unresolvable" || no "unresolved default should fail closed (rc=$rc): $out"
+( cd "$cons" && PLAYBOOK_REF="$dsha" ALLOW_NONDEFAULT_PIN=1 AGENT_PLAYBOOK_REPO="$hubd" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_NONDEFAULT_PIN=1 bypasses the unresolved-default fail-closed" || no "override should allow when origin/HEAD unresolved"
+rm -rf "$cons" "$hubd"
 
 rm -rf "$hub"
 echo "---"
