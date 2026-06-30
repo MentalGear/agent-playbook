@@ -8,11 +8,14 @@
 #                                                         # shallow --branch clone needs a branch/tag)
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/update-check.sh   # offline, from a local checkout
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+require_tools git jq
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$root/.agents/skills-lock.json"
 [ -f "$lock" ] || { echo "update-check: no lockfile ($lock) — run sync first" >&2; exit 2; }
+jq -e . "$lock" >/dev/null 2>&1 || { echo "update-check: $lock is not valid JSON." >&2; exit 2; }
 
-repo="$(sed -n 's/.*"playbook_repo":[[:space:]]*"\([^"]*\)".*/\1/p' "$lock" | head -1)"
+repo="$(lock_repo "$lock")"
 REGISTRY_REF="${REGISTRY_REF:-main}"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 reg="$tmp/registry.yaml"
@@ -31,9 +34,8 @@ else
   resolved_ref_sha="$(git -C "$tmp/ap" rev-parse HEAD 2>/dev/null || true)"
 fi
 
-# locked versions:  name<TAB>version   (parsed from the JSON lock entries)
-lock_versions="$(grep '"sha256_vendored"' "$lock" \
-  | sed -n 's/^[[:space:]]*"\([A-Za-z0-9_-]*\)":.*"version":[[:space:]]*"\([^"]*\)".*/\1\t\2/p')"
+# locked versions:  name<TAB>version   (jq, not line-matching)
+lock_versions="$(lock_skills "$lock" | cut -f1,2)"
 # registry versions + deprecations:  name<TAB>version<TAB>deprecated?
 reg_data="$(awk '
   /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { name=$1; sub(/:$/,"",name); ver[name]=""; dep[name]="" ; order[++n]=name; next }

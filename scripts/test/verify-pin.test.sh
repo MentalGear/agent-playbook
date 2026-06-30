@@ -24,7 +24,7 @@ srch="$(dirhash "$hub/skills/foo")"
 
 mkcons() {  # <pinned_sha> <sha256_source> [playbook_repo=x]
   local c; c="$(mktemp -d)"; mkdir -p "$c/scripts" "$c/.agents"
-  cp "$SRC/verify-pin.sh" "$c/scripts/"
+  cp "$SRC/lib.sh" "$SRC/verify-pin.sh" "$c/scripts/"
   printf '{\n  "playbook_repo": "%s",\n  "pinned_sha": "%s",\n  "skills": {\n    "foo": { "version": "1.0.0", "sha256_source": "%s", "sha256_vendored": "%s" }\n  }\n}\n' "${3:-x}" "$1" "$2" "$2" > "$c/.agents/skills-lock.json"
   echo "$c"
 }

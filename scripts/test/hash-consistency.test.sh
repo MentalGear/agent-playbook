@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Pins the invariant that the inlined skill_dir_hash() function is BYTE-IDENTICAL across every
-# script that computes it. If one copy drifts (e.g. someone fixes a bug in only one), source and
-# vendored hashes silently disagree across the toolchain — drift-check screams false drift, or
-# worse agrees by coincidence. This test extracts each copy's function body and asserts equality.
-# Run: bash scripts/test/hash-consistency.test.sh
+# Pins the single-source-of-truth invariant for skill_dir_hash: it is defined ONCE in lib.sh,
+# no script inlines its own copy, and every script that needs it sources lib.sh. (This replaces
+# the old "5 byte-identical copies" guard — the copies are gone; the risk now is a stray re-inline
+# or a script that forgets to source lib.sh.) Run: bash scripts/test/hash-consistency.test.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$(cd "$HERE/.." && pwd)"   # the scripts/ dir under test
@@ -11,24 +10,23 @@ pass=0; failed=0
 ok() { echo "  ✓ $1"; pass=$((pass+1)); }
 no() { echo "  ✗ $1" >&2; failed=$((failed+1)); }
 
-# Every script that inlines skill_dir_hash(). Add new copies here.
-files=(sync-agent-skills.sh drift-check.sh build-registry.sh validate-skill.sh verify-pin.sh)
-extract() { awk '/^skill_dir_hash\(\) \{/{p=1} p{print} p&&/^\}/{exit}' "$1"; }
+echo "hash-consistency (single-source) tests:"
 
-echo "hash-consistency tests:"
-ref=""; refname=""; mismatch=0; present=0
+lib="$SRC/lib.sh"
+defs="$(grep -c '^skill_dir_hash() {' "$lib" 2>/dev/null || true)"
+[ "${defs:-0}" -eq 1 ] && ok "lib.sh defines skill_dir_hash() exactly once" || no "lib.sh should define skill_dir_hash() once (found ${defs:-0})"
+
+# every script in the toolchain must source lib.sh and must NOT inline its own skill_dir_hash
+files=(sync-agent-skills.sh drift-check.sh build-registry.sh validate-skill.sh verify-pin.sh update-check.sh)
+inline=0; unsourced=0
 for f in "${files[@]}"; do
-  path="$SRC/$f"
-  [ -f "$path" ] || { no "$f: missing"; mismatch=1; continue; }
-  body="$(extract "$path")"
-  [ -n "$body" ] || { no "$f: no skill_dir_hash() body found"; mismatch=1; continue; }
-  present=$((present+1))
-  if [ -z "$ref" ]; then ref="$body"; refname="$f"
-  elif [ "$body" != "$ref" ]; then no "$f: skill_dir_hash() body differs from $refname"; mismatch=1; fi
+  p="$SRC/$f"
+  [ -f "$p" ] || { no "$f: missing"; inline=1; continue; }
+  if grep -q '^skill_dir_hash() {' "$p"; then no "$f: inlines its own skill_dir_hash() — must source lib.sh instead"; inline=1; fi
+  grep -q 'lib\.sh' "$p" || { no "$f: does not source lib.sh"; unsourced=1; }
 done
-{ [ "$present" -ge 2 ] && [ "$mismatch" -eq 0 ]; } \
-  && ok "skill_dir_hash() byte-identical across $present copies" \
-  || no "skill_dir_hash() copies diverged or too few found (present=$present)"
+[ "$inline" -eq 0 ]    && ok "no script inlines skill_dir_hash (single source lives in lib.sh)"
+[ "$unsourced" -eq 0 ] && ok "every toolchain script sources lib.sh"
 
 echo "---"
 echo "hash-consistency: $pass passed, $failed failed."

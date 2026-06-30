@@ -12,12 +12,15 @@
 #   scripts/verify-pin.sh                                  # clone the hub at the pin
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/verify-pin.sh   # offline: a local checkout AT the pin
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+require_tools git jq
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 lock="$root/.agents/skills-lock.json"
 [ -f "$lock" ] || { echo "verify-pin: no lockfile ($lock) — run sync-agent-skills.sh first" >&2; exit 2; }
+jq -e . "$lock" >/dev/null 2>&1 || { echo "verify-pin: $lock is not valid JSON." >&2; exit 2; }
 
-repo="$(sed -n 's/.*"playbook_repo":[[:space:]]*"\([^"]*\)".*/\1/p' "$lock" | head -1)"
-pin="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$lock" | head -1)"
+repo="$(lock_repo "$lock")"
+pin="$(lock_pin "$lock")"
 [[ "$pin" =~ ^[0-9a-f]{40}$ ]] || { echo "verify-pin: lockfile pinned_sha '$pin' is not a full 40-char SHA." >&2; exit 2; }
 
 # Anchor trust to the CANONICAL hub, not the lockfile we are auditing. Reading the repo URL from
@@ -31,13 +34,6 @@ if [ "$repo" != "$EXPECTED_REPO" ] && [ -z "${VERIFY_PIN_ALLOW_REPO:-}" ]; then
   echo "            Point AGENT_PLAYBOOK_REPO at the canonical hub, or set VERIFY_PIN_ALLOW_REPO=1 to override." >&2
   exit 2
 fi
-
-# Deterministic hash of ALL files in a skill dir (path+content). MUST stay byte-identical
-# to sync-agent-skills.sh / build-registry.sh / validate-skill.sh / drift-check.sh.
-skill_dir_hash() {
-  ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
-      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
-}
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 if [ -n "${AGENT_PLAYBOOK_SRC:-}" ]; then
@@ -60,11 +56,9 @@ fi
 reg="$src/registry.yaml"
 
 fails=0; checked=0
-# lockfile entries: one line each, carrying "<name>": { ... "sha256_source": "<hash>" ... }
-while IFS= read -r line; do
-  name="$(printf '%s' "$line" | sed -n 's/^[[:space:]]*"\([A-Za-z0-9_-]*\)":[[:space:]]*{.*/\1/p')"
+# name<TAB>version<TAB>sha256_source<TAB>sha256_vendored  (jq, not line-matching)
+while IFS=$'\t' read -r name _ver want_src _vend; do
   [ -z "$name" ] && continue
-  want_src="$(printf '%s' "$line" | sed -n 's/.*"sha256_source":[[:space:]]*"\([0-9a-f]*\)".*/\1/p')"
   checked=$((checked+1))   # count PARSED entries, not successes — so a fully-tampered lockfile
                            # reports "does not match" (exit 1), not "malformed lockfile" (exit 2).
   d="$src/skills/$name"
@@ -78,7 +72,7 @@ while IFS= read -r line; do
   if [ -f "$reg" ] && ! grep -qxF "    sha256: $have_src" "$reg"; then
     echo "  ! $name: source hash not found in registry.yaml at the pin (registry may predate this commit)" >&2
   fi
-done < <(grep '"sha256_source"' "$lock")
+done < <(lock_skills "$lock")
 
 if [ "$checked" -eq 0 ]; then echo "verify-pin: no skills parsed from $lock — malformed lockfile." >&2; exit 2; fi
 if [ "$fails" -ne 0 ]; then echo "verify-pin: FAILED — vendored lockfile does not match the hub at $pin ($fails problem(s))." >&2; exit 1; fi

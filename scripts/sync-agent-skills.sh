@@ -3,7 +3,7 @@
 #
 # Copy THIS file into your repo at scripts/sync-agent-skills.sh, set SKILLS to the
 # skills you want, and run it. With no pin and no lockfile, the FIRST sync resolves a
-# starting commit (default branch 'main', or $PLAYBOOK_DEFAULT_REF) to a concrete 40-char
+# starting commit (the hub's default branch, or $PLAYBOOK_DEFAULT_REF) to a concrete 40-char
 # SHA and pins THAT — review the resolved SHA in the committed lockfile diff. Or pin
 # explicitly the first time:
 #     PLAYBOOK_REF=<sha-or-ref> scripts/sync-agent-skills.sh
@@ -16,6 +16,8 @@
 # hashes). The lockfile is read by the drift-check (local edits) and update-check
 # (vs the upstream registry). Never hand-edit vendored files — re-run this instead.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+require_tools git jq
 
 PLAYBOOK_REPO="${AGENT_PLAYBOOK_REPO:-https://github.com/MentalGear/agent-playbook.git}"
 SKILLS=(subagent-framework agent-operating-principles independent-expert-review project-gates agent-repo-layout agent-access)
@@ -28,7 +30,7 @@ lockfile="$repo_root/.agents/skills-lock.json"
 # --- Resolve the pin: explicit env > lockfile > error ----------------------------
 PLAYBOOK_REF_ENV="${PLAYBOOK_REF:-}"   # was it explicitly requested this run?
 locked_sha=""
-[ -f "$lockfile" ] && locked_sha="$(sed -n 's/.*"pinned_sha"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$lockfile" | head -1)"
+[ -f "$lockfile" ] && locked_sha="$(lock_pin "$lockfile")"
 PLAYBOOK_REF="${PLAYBOOK_REF:-$locked_sha}"
 first_pin=0
 if [[ -z "$PLAYBOOK_REF" ]]; then
@@ -83,14 +85,7 @@ lock_entries=()
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
 }
-# Deterministic hash of ALL regular files in a skill dir (path+content) — covers reference.md/assets.
-# MUST stay byte-identical to build-registry.sh / validate-skill.sh / drift-check.sh / verify-pin.sh
-# (enforced by scripts/test/hash-consistency.test.sh). Requires GNU coreutils (find -print0, sort -z,
-# sha256sum) + bash. NB: hashes regular files only (-type f); symlinks are not covered.
-skill_dir_hash() {
-  ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
-      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
-}
+# skill_dir_hash() comes from lib.sh — the single source of truth (no inline copy to keep in sync).
 
 for skill in "${SKILLS[@]}"; do
   src_skill_dir="$src/skills/$skill"

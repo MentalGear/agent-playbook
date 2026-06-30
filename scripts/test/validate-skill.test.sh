@@ -18,7 +18,7 @@ mkskill() {  # mkskill <hub> <name> <frontmatter-line>...
 }
 newhub() {  # fresh hub with the scripts + an empty registry built later
   local h; h="$(mktemp -d)"; mkdir -p "$h/scripts"
-  cp "$SRC/build-registry.sh" "$SRC/validate-skill.sh" "$h/scripts/"
+  cp "$SRC/lib.sh" "$SRC/build-registry.sh" "$SRC/validate-skill.sh" "$h/scripts/"
   echo "$h"
 }
 # validate <hub> <name> [extra-env] -> RC, OUT

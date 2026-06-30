@@ -7,6 +7,7 @@
 # hub only with explicit human approval (see the review-skill-proposal skill).
 # A `write` default-access hard-fails unless the human sets ALLOW_WRITE_DEFAULT=1.
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 shopt -s nullglob
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
@@ -23,12 +24,7 @@ fm_field() { printf '%s\n' "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -1; }
 # scalar field with any YAML inline comment + trailing space stripped (use only for
 # short scalar fields — name/version/requires/default-access/isolation — never description)
 fm_scalar() { fm_field "$1" "$2" | sed 's/[[:space:]]*#.*$//; s/[[:space:]]*$//'; }
-# Deterministic hash of ALL files in a skill dir (path+content). MUST stay byte-identical
-# to build-registry.sh / sync-agent-skills.sh / drift-check.sh, or hashes will disagree.
-skill_dir_hash() {
-  ( cd "$1" && find . -type f -print0 | LC_ALL=C sort -z | while IFS= read -r -d '' p; do
-      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
-}
+# skill_dir_hash() comes from lib.sh — the single source of truth.
 
 validate_one() {
   local name="$1" f="skills/$1/SKILL.md" before="$fails"
