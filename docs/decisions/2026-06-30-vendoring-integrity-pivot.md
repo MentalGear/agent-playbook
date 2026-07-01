@@ -85,6 +85,13 @@ Replace the hash layer with:
   accepted posture for a small internal hub on a trusted GitHub org. No signing/TUF/Sigstore (researched and
   deemed overkill: a full-SHA pin + git re-derivation are the integrity story; signing only adds *who
   published it*).
+- **The hub is public by design.** The CI gate — and any consumer, including ephemeral web/sandbox
+  containers — must *fetch* the hub over the network to re-derive the vendored tree. Making `agent-playbook`
+  public enables unauthenticated vendoring with no per-consumer secrets (confirmed in real CI: a private hub
+  failed the consumer gate with `could not read Username`). Keeping the hub private would instead require a
+  CI read credential (fine-grained PAT / deploy key / GitHub App) wired into the clone. Public was chosen as
+  it matches the hub's "reusable, shareable across repos" purpose; a secret-scan of the tree + full history
+  (no keys/tokens/creds) preceded the visibility flip.
 
 ## References
 
