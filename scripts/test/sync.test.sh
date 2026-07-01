@@ -150,6 +150,27 @@ out="$(cd "$cons" && PLAYBOOK_REF="$c1" AGENT_PLAYBOOK_REPO="$hubr" bash scripts
 ( cd "$cons" && PLAYBOOK_REF="$c1" ALLOW_ROLLBACK=1 AGENT_PLAYBOOK_REPO="$hubr" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_ROLLBACK=1 overrides the rollback guard" || no "override should allow the backward bump"
 rm -rf "$hubr" "$cons"
 
+# 16) REGRESSION GUARD (round-3): ancestry must fire on the RE-SYNC path too, not only on a bump.
+#     A lockfile pinned at an off-default-branch commit (as a hand-edit to an unmerged hub SHA would
+#     leave it) must be REJECTED on a plain re-sync (no PLAYBOOK_REF), where resolved_sha == locked_sha.
+#     Gating the check on "new pin only" silently skipped exactly this case, so a full clone could check
+#     out the unmerged commit and — with matching vendored content — pass CI. See the round-3 revert.
+hubx="$(mktemp -d)"; mkdir -p "$hubx/skills/foo"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hubx/skills/foo/SKILL.md"
+( cd "$hubx" && git init -q -b main && GI add -A && GI commit -qm main1 )
+( cd "$hubx" && GI checkout -q -b evil && printf 'x\n' > skills/foo/evil.md && GI add -A && GI commit -qm "unmerged evil" )
+evilsha="$(git -C "$hubx" rev-parse evil)"; ( cd "$hubx" && GI checkout -q main )
+cons="$(mkcons foo)"
+# Simulate a lockfile pinned at the off-branch commit (bypass first-pin ancestry the way a hand-edit would).
+( cd "$cons" && PLAYBOOK_REF="$evilsha" ALLOW_NONDEFAULT_PIN=1 AGENT_PLAYBOOK_REPO="$hubx" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+[ "$(jq -r '.pinned_sha' "$cons/.agents/skills-lock.json" 2>/dev/null)" = "$evilsha" ] || no "setup: lockfile should be pinned at the off-branch sha"
+# A plain re-sync (no PLAYBOOK_REF, no override) must STILL reject it — here resolved_sha == locked_sha.
+out="$(cd "$cons" && AGENT_PLAYBOOK_REPO="$hubx" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi "not an ancestor" <<<"$out"; } \
+  && ok "re-sync rejects a lockfile pinned off the default branch (round-3 regression guard)" \
+  || no "re-sync must reject an off-branch locked pin even when resolved==locked (rc=$rc): $out"
+rm -rf "$cons" "$hubx"
+
 rm -rf "$hub"
 echo "---"
 echo "sync: $pass passed, $failed failed."
