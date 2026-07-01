@@ -96,6 +96,21 @@ fi
 
 # Pin must be a full 40-char commit SHA (a short SHA is ambiguous/collision-wider as a pin).
 [[ "$resolved_sha" =~ ^[0-9a-f]{40}$ ]] || { echo "ERROR: resolved pin '$resolved_sha' is not a full 40-char commit SHA." >&2; exit 2; }
+
+# Rollback guard: on a pin BUMP, the new pin must be a DESCENDANT of the currently-locked pin (old is
+# an ancestor of new) — catches an accidental backward/divergent bump. Skipped on first pin, an
+# unchanged pin, or when the old pin isn't in the fetched history. Override with ALLOW_ROLLBACK=1.
+if [[ -n "$locked_sha" && "$resolved_sha" != "$locked_sha" && -z "${ALLOW_ROLLBACK:-}" ]]; then
+  if git -C "$src" cat-file -e "${locked_sha}^{commit}" 2>/dev/null; then
+    git -C "$src" merge-base --is-ancestor "$locked_sha" "$resolved_sha" 2>/dev/null || {
+      echo "ERROR: new pin $resolved_sha is not a descendant of the locked pin $locked_sha (rollback/divergent bump)." >&2
+      echo "       Set ALLOW_ROLLBACK=1 to override." >&2
+      exit 2; }
+  else
+    echo "WARN: locked pin $locked_sha not present in the fetched history — skipping the rollback check." >&2
+  fi
+fi
+
 if [[ "$first_pin" == 1 ]]; then
   echo "→ First sync: pinned $resolved_sha (from $PLAYBOOK_REPO). REVIEW this SHA AND playbook_repo in $(basename "$lockfile") before committing." >&2
 fi
