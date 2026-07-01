@@ -88,3 +88,5 @@ if [ "${#vdep[@]}" -gt 0 ] && [ -n "${FAIL_ON_VENDORED_DEPRECATED:-}" ]; then
   echo "update-check: ${#vdep[@]} vendored skill(s) deprecated upstream (FAIL_ON_VENDORED_DEPRECATED set)." >&2
   exit 5
 fi
+
+exit 0   # explicit: reaching here means the check ran cleanly (advisory — never fails the build)
