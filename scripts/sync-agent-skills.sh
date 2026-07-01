@@ -77,13 +77,15 @@ else
   if [[ -n "$PLAYBOOK_REF" ]]; then git -C "$work/ap" checkout --quiet "$PLAYBOOK_REF"; fi
   src="$work/ap"
   resolved_sha="$(git -C "$src" rev-parse HEAD)"
-  # Ancestry check: the pin must be reachable from the hub's DEFAULT branch — rejects a SHA that
-  # only exists on a fork or an unmerged branch (the "pinned a bad SHA from a malicious fork" class).
-  # Runs UNCONDITIONALLY — do NOT gate it on "new pin only" (resolved_sha != locked_sha). In CI the
-  # re-sync path always has resolved_sha == locked_sha, so that gate would skip this check exactly when
-  # it must catch a lockfile hand-edited to an off-default-branch hub commit (a full clone can check out
-  # an unmerged-branch commit, and the matching vendored content leaves `git status` clean). A branch
-  # rename preserves ancestry; only a rare hub history-rewrite orphans a good pin — worth failing on.
+  # Ancestry check (CLONE path only): the pin must be reachable from the hub's DEFAULT branch — rejects a
+  # SHA that only exists on a fork or an unmerged branch (the "pinned a bad SHA from a malicious fork"
+  # class). The AGENT_PLAYBOOK_SRC (local/dev) path above deliberately skips this and trusts the local
+  # checkout; the security boundary is here, on the clone path that CI uses.
+  # Runs UNCONDITIONALLY within this path — do NOT gate it on "new pin only" (resolved_sha != locked_sha):
+  # in CI the re-sync path always has resolved_sha == locked_sha, so that gate would skip this check
+  # exactly when it must catch a lockfile hand-edited to an off-default-branch hub commit (a full clone
+  # can check out an unmerged-branch commit, and matching vendored content leaves `git status` clean).
+  # A branch rename preserves ancestry; only a rare hub history-rewrite orphans a good pin — worth failing on.
   if [[ -z "${ALLOW_NONDEFAULT_PIN:-}" ]]; then
     def_ref="$(git -C "$src" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null || true)"
     if [[ -n "$def_ref" ]]; then
