@@ -2,7 +2,7 @@
 name: agent-repo-layout
 description: Use when setting up a repo for agents, or when unsure where an agent-facing artifact belongs or whether you may write to a path. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log) and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, and the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Agent repo layout — where things live, and what may write where
@@ -90,22 +90,43 @@ Gotchas that have cost real time:
 - **Use full tool paths in `postCreateCommand`** — `remoteEnv`'s PATH may not be active yet during create.
 - **Make heavy/optional installs best-effort** (`… || echo skipped`) so a flaky download can't fail create.
 
-A known-good reference (Bun + browser verification) resolving all of the above:
+A known-good reference (Bun + browser verification), **verified on GitHub Codespaces**, resolving all of
+the above:
 ```jsonc
 {
-  "name": "example (Bun + browser verification)",
+  "name": "Devcontainer (works with github codespaces)",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:22-bookworm",
-  "features": { "ghcr.io/devcontainers/features/git:1": {} },
-  // user-writable install dir; PLAYWRIGHT_BROWSERS_PATH for the verification browser
-  "containerEnv": { "BUN_INSTALL": "/home/node/.bun", "PLAYWRIGHT_BROWSERS_PATH": "/opt/pw-browsers" },
-  // PATH in remoteEnv so ${containerEnv:PATH} resolves against the container's real PATH
-  "remoteEnv": { "PATH": "/home/node/.bun/bin:${containerEnv:PATH}" },
-  // install the toolchain once; inline BUN_INSTALL so the installer can't read a stale value
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  // BUN_INSTALL tells the bun installer where to put bun (must be user-writable).
+  // /home/node/.bun is the default location for the non-root "node" user in this image.
+  // PATH is in remoteEnv (not containerEnv) so ${containerEnv:PATH} resolves correctly
+  // against the container's real PATH instead of being passed literally to docker run.
+  "containerEnv": {
+    "BUN_INSTALL": "/home/node/.bun",
+    "PLAYWRIGHT_BROWSERS_PATH": "/opt/pw-browsers"
+  },
+  "remoteEnv": {
+    "PATH": "/home/node/.bun/bin:${containerEnv:PATH}"
+  },
+  // Install Bun once when the container is created.
+  // Explicit BUN_INSTALL=... inline so the installer never picks up a stale containerEnv value.
   "onCreateCommand": "curl -fsSL https://bun.sh/install | BUN_INSTALL=/home/node/.bun bash",
-  // deps + (best-effort) the browser; full paths since remoteEnv PATH isn't active yet
-  "postCreateCommand": "/home/node/.bun/bin/bun install && (/home/node/.bun/bin/bunx playwright install --with-deps chromium || echo 'chromium install skipped')",
+  // Install JS deps and (best-effort) the Chromium used for browser verification.
+  // Use the full path so this works before remoteEnv PATH is active.
+  "postCreateCommand": "/home/node/.bun/bin/bun install && (/home/node/.bun/bin/bunx playwright install --with-deps chromium || echo 'playwright chromium install skipped')",
   "forwardPorts": [5173],
-  "portsAttributes": { "5173": { "label": "Vite dev server", "onAutoForward": "openBrowser" } },
-  "customizations": { "vscode": { "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"] } }
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite dev server",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["dbaeumer.vscode-eslint", "esbenp.prettier-vscode"]
+    }
+  }
 }
 ```

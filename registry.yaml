@@ -11,8 +11,8 @@ skills:
     version: 1.0.0
     sha256: 5ae059eb80ab44a15459ada742dc02a91a29616b4f40d1af1a84d20eb3087bf6
   agent-repo-layout:
-    version: 1.0.0
-    sha256: 9261d3f583914235e5f82a17320eddaf72f1f17b7e676fd33e53af4fb135c058
+    version: 1.1.0
+    sha256: ad4f42db4bac8e1d6e02fbe90f4ff8da036bba133a1923f67d95273c15d738c9
   end-of-round-report:
     version: 1.0.0
     sha256: 09c0fde667331118e30c8f86fbf5c56af98b3780ceafd4b5d167251b4a946c3b
