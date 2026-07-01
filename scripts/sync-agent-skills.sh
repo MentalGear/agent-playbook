@@ -3,8 +3,10 @@
 #
 # INTEGRITY MODEL — sync is DETERMINISTIC. Re-running it at the pinned SHA reproduces the vendored
 # tree + lockfile byte-for-byte. So the integrity gate is simply: in CI, run this script and then
-# `git diff --exit-code -- .agents .claude`. Any hand-edit to a vendored skill, a doctored lockfile,
-# an orphaned skill dir, or an injected symlink shows up as drift and fails the build. There are NO
+# `git status --porcelain -- .agents .claude` (NOT `git diff --exit-code`, which ignores untracked
+# files — an orphaned skill dir left by a rename would slip past it). Any hand-edit to a vendored
+# skill, a doctored lockfile, an orphaned skill dir, or an injected symlink shows up as drift and
+# fails the build. There are NO
 # content hashes and no separate drift-check/verify-pin scripts — git IS the content check, and
 # re-deriving from the hub at the pin is what ties the vendored bytes back to upstream.
 #

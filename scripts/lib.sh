@@ -3,7 +3,7 @@
 # Source it (`. "$(dirname "${BASH_SOURCE[0]}")/lib.sh"`); never copy these functions inline.
 # Hard deps: bash, GNU coreutils, and jq (for lockfile reads). skill_dir_hash is used by the hub's
 # build-registry/validate-skill (the published registry's content hash); the consumer's integrity
-# gate is sync + `git diff --exit-code`, not a hash.
+# gate is sync + `git status --porcelain` (not `git diff`, which ignores untracked files), not a hash.
 
 # Fail loudly if a required tool is absent (better than silently mis-parsing / wrong hashes).
 require_tools() {

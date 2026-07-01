@@ -75,6 +75,11 @@ if [ "${#updated[@]}" -gt 0 ] || [ "${#new[@]}" -gt 0 ]; then
   else
     echo "  To adopt: PLAYBOOK_REF=<new-sha> scripts/sync-agent-skills.sh (and add any new skills to SKILLS)."
   fi
+  if [ "${#new[@]}" -gt 0 ]; then
+    echo "      ⚠ NEW skills stay UNVENDORED until you add their names to the SKILLS=(…) array in"
+    echo "        scripts/sync-agent-skills.sh — re-syncing without that edit silently leaves them out"
+    echo "        (the integrity gate sees nothing changed, so it won't warn you)."
+  fi
 fi
 
 # Enforcement hook: with FAIL_ON_VENDORED_DEPRECATED=1, exit non-zero when a skill you VENDOR is

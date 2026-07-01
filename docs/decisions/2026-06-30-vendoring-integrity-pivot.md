@@ -54,7 +54,7 @@ the earlier rounds had only reviewed diffs) found the hash design had **real, re
 ## Why we changed direction
 
 The key realization: **`sync` is deterministic**, so re-running it at the pinned SHA re-derives the vendored
-tree from the hub and overwrites it. Therefore **`sync && git diff --exit-code` (in CI) is itself the
+tree from the hub and overwrites it. Therefore **`sync && git status --porcelain` (in CI) is itself the
 integrity check** — and a *stronger* one than the hashes, because it ties the vendored bytes back to the hub
 on every run instead of to a self-declared lockfile field. One gate closes A (no hash to forge — git
 re-derivation is the check), B (git tracks symlinks; `rm -rf` + re-copy removes an injected one), and C
@@ -70,8 +70,10 @@ Replace the hash layer with:
   fork-only/off-branch pin; fail-closed when the default branch is unresolvable; `ALLOW_NONDEFAULT_PIN=1`
   overrides), **atomic** lockfile write, and a pre-validate pass.
 - **Lockfile** = `{ playbook_repo, pinned_sha, skills:{name:version} }` — no content hashes.
-- **CI gate** (consumer) = `sync-agent-skills.sh && git diff --exit-code -- .agents .claude` + **symlink
+- **CI gate** (consumer) = `sync-agent-skills.sh && git status --porcelain -- .agents .claude` + **symlink
   hygiene** (no links under `.agents/skills`; every `.claude/skills` link points into `.agents/skills/`).
+  (`git status --porcelain`, not `git diff --exit-code`: the latter ignores untracked files, so an orphaned
+  skill dir would slip past it — catching that orphan is case C, one of the reasons for the pivot.)
 - **Kept** (separable concern): `update-check`, the `registry`/`validate`/`build-registry` publishing layer,
   and `jq`.
 

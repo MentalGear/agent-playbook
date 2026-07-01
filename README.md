@@ -71,9 +71,10 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    in the diff. Re-run with no args to stay at the locked pin; `PLAYBOOK_REF=<new-sha>` to bump it.
 3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
    into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
-   and writes the lockfile (pin + per-skill version). **Integrity is a git-diff gate, not a hash:** `sync` is
-   deterministic, so CI runs `scripts/sync-agent-skills.sh && git diff --exit-code -- .agents .claude` — any
-   hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces a diff and fails the build.
+   and writes the lockfile (pin + per-skill version). **Integrity is a re-sync + git gate, not a hash:** `sync`
+   is deterministic, so CI runs `scripts/sync-agent-skills.sh && git status --porcelain -- .agents .claude`
+   (`git status --porcelain`, not `git diff --exit-code`, so an untracked orphaned skill dir is caught too) —
+   any hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces drift and fails the build.
    Never hand-edit vendored files; they're clobbered on the next sync.
 4. **Declare your gates** in a `project-gates` manifest at `.agents/gates.yaml` (categories, triggers,
    commands, flow — see the `project-gates` skill for the schema). This is the structured source of truth for
@@ -108,7 +109,7 @@ Each skill carries a **`version`** (semver) in its frontmatter. **`registry.yaml
 and `deprecated?`. Downstream consumers compare their `.agents/skills-lock.json` against `registry.yaml` to
 find **updated** skills (locked version behind the registry), **new** skills (in the registry, not yet
 vendored), and **deprecations** — that's the `update-check`. Hand-edits to vendored files are caught by the
-**integrity gate**, not a separate hash: `sync` is deterministic, so CI's `sync && git diff --exit-code`
+**integrity gate**, not a separate hash: `sync` is deterministic, so CI's `sync && git status --porcelain`
 reproduces any tampering (or an orphan, or an injected symlink) as drift. Bump a skill's `version` when you
 change it, re-run `build-registry.sh`, and commit `registry.yaml`.
 
