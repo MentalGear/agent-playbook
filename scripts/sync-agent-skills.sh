@@ -79,7 +79,11 @@ else
   resolved_sha="$(git -C "$src" rev-parse HEAD)"
   # Ancestry check: the pin must be reachable from the hub's DEFAULT branch — rejects a SHA that
   # only exists on a fork or an unmerged branch (the "pinned a bad SHA from a malicious fork" class).
-  if [[ -z "${ALLOW_NONDEFAULT_PIN:-}" ]]; then
+  # Only when the pin is NEW (first pin or a bump). Re-syncing at the already-locked pin re-derives
+  # identical bytes, so re-checking it every CI run adds no safety — it only couples the consumer's CI
+  # to the hub's current default-branch/HEAD state (a hub rename or history rewrite would then red-line
+  # unrelated consumer PRs). first_pin ⟹ empty locked_sha ⟹ resolved≠locked, so one clause covers both.
+  if [[ -z "${ALLOW_NONDEFAULT_PIN:-}" && "$resolved_sha" != "$locked_sha" ]]; then
     def_ref="$(git -C "$src" symbolic-ref --quiet refs/remotes/origin/HEAD 2>/dev/null || true)"
     if [[ -n "$def_ref" ]]; then
       git -C "$src" merge-base --is-ancestor "$resolved_sha" "$def_ref" 2>/dev/null || {
