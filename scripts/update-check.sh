@@ -7,6 +7,7 @@
 #   REGISTRY_REF=<branch|tag> scripts/update-check.sh     # default: main (NOT a commit SHA — the
 #                                                         # shallow --branch clone needs a branch/tag)
 #   AGENT_PLAYBOOK_SRC=/path/to/agent-playbook scripts/update-check.sh   # offline, from a local checkout
+#   FAIL_ON_VENDORED_DEPRECATED=1 scripts/update-check.sh   # exit 5 if a VENDORED skill is deprecated (CI)
 set -uo pipefail
 # shellcheck source=scripts/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "update-check: cannot source lib.sh" >&2; exit 3; }
@@ -41,32 +42,44 @@ lock_versions="$(lock_skills "$lock")"
 reg_data="$(awk '
   /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { name=$1; sub(/:$/,"",name); ver[name]=""; dep[name]="" ; order[++n]=name; next }
   /^    version:/ { v=$2; ver[name]=v; next }
-  /^    deprecated:/ { sub(/^[[:space:]]*deprecated:[[:space:]]*/,""); dep[name]=$0; next }
+  /^    deprecated:/ { sub(/^[[:space:]]*deprecated:[[:space:]]*/,""); gsub(/^"|"$/,""); dep[name]=$0; next }
   END { for (i=1;i<=n;i++){k=order[i]; printf "%s\t%s\t%s\n", k, ver[k], dep[k]} }
 ' "$reg")"
 
 lv() { printf '%s\n' "$lock_versions" | while IFS=$'\x1f' read -r n v; do [ "$n" = "$1" ] && { printf '%s' "$v"; return; }; done; }
 newer() { [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$2" ] && [ "$1" != "$2" ]; }
 
-updated=(); new=(); deprecated=()
+updated=(); new=(); deprecated=(); vdep=()   # vdep = deprecations of skills VENDORED here
 while IFS=$'\t' read -r name rver rdep; do
   [ -z "$name" ] && continue
-  [ -n "$rdep" ] && deprecated+=("$name → $rdep")
   locked="$(lv "$name")"
+  if [ -n "$rdep" ]; then
+    if [ -n "$locked" ]; then vdep+=("$name → $rdep"); else deprecated+=("$name → $rdep"); fi
+  fi
   if [ -z "$locked" ]; then new+=("$name ($rver)")
   elif [ "$locked" != "$rver" ] && newer "$locked" "$rver"; then updated+=("$name: $locked → $rver"); fi
 done <<< "$reg_data"
 
 echo "update-check vs ${repo##*/}@${REGISTRY_REF}:"
-if [ "${#updated[@]}" -eq 0 ] && [ "${#new[@]}" -eq 0 ] && [ "${#deprecated[@]}" -eq 0 ]; then
+if [ "${#updated[@]}" -eq 0 ] && [ "${#new[@]}" -eq 0 ] && [ "${#deprecated[@]}" -eq 0 ] && [ "${#vdep[@]}" -eq 0 ]; then
   echo "  ✓ up to date"; exit 0
 fi
-[ "${#updated[@]}" -gt 0 ]    && { echo "  ▲ updates available:"; printf '      - %s\n' "${updated[@]}"; }
-[ "${#new[@]}" -gt 0 ]        && { echo "  + new skills:";        printf '      - %s\n' "${new[@]}"; }
-[ "${#deprecated[@]}" -gt 0 ] && { echo "  ⚠ deprecated:";        printf '      - %s\n' "${deprecated[@]}"; }
-if [[ "$resolved_ref_sha" =~ ^[0-9a-f]{40}$ ]]; then
-  echo "  To adopt ${REGISTRY_REF} (resolved → $resolved_ref_sha):"
-  echo "      PLAYBOOK_REF=$resolved_ref_sha scripts/sync-agent-skills.sh   # then add any NEW skills to SKILLS"
-else
-  echo "  To adopt: PLAYBOOK_REF=<new-sha> scripts/sync-agent-skills.sh (and add any new skills to SKILLS)."
+[ "${#updated[@]}" -gt 0 ]    && { echo "  ▲ updates available:";        printf '      - %s\n' "${updated[@]}"; }
+[ "${#new[@]}" -gt 0 ]        && { echo "  + new skills:";               printf '      - %s\n' "${new[@]}"; }
+[ "${#vdep[@]}" -gt 0 ]       && { echo "  ⛔ DEPRECATED (vendored here):"; printf '      - %s\n' "${vdep[@]}"; }
+[ "${#deprecated[@]}" -gt 0 ] && { echo "  ⚠ deprecated (not vendored):"; printf '      - %s\n' "${deprecated[@]}"; }
+if [ "${#updated[@]}" -gt 0 ] || [ "${#new[@]}" -gt 0 ]; then
+  if [[ "$resolved_ref_sha" =~ ^[0-9a-f]{40}$ ]]; then
+    echo "  To adopt ${REGISTRY_REF} (resolved → $resolved_ref_sha):"
+    echo "      PLAYBOOK_REF=$resolved_ref_sha scripts/sync-agent-skills.sh   # then add any NEW skills to SKILLS"
+  else
+    echo "  To adopt: PLAYBOOK_REF=<new-sha> scripts/sync-agent-skills.sh (and add any new skills to SKILLS)."
+  fi
+fi
+
+# Enforcement hook: with FAIL_ON_VENDORED_DEPRECATED=1, exit non-zero when a skill you VENDOR is
+# deprecated upstream — lets CI surface it as a warning/failure (advisory exit 0 otherwise).
+if [ "${#vdep[@]}" -gt 0 ] && [ -n "${FAIL_ON_VENDORED_DEPRECATED:-}" ]; then
+  echo "update-check: ${#vdep[@]} vendored skill(s) deprecated upstream (FAIL_ON_VENDORED_DEPRECATED set)." >&2
+  exit 5
 fi

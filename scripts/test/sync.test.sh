@@ -136,6 +136,20 @@ out="$(cd "$cons" && PLAYBOOK_REF="$dsha" AGENT_PLAYBOOK_REPO="$hubd" bash scrip
 ( cd "$cons" && PLAYBOOK_REF="$dsha" ALLOW_NONDEFAULT_PIN=1 AGENT_PLAYBOOK_REPO="$hubd" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_NONDEFAULT_PIN=1 bypasses the unresolved-default fail-closed" || no "override should allow when origin/HEAD unresolved"
 rm -rf "$cons" "$hubd"
 
+# 15) rollback guard: a pin bump that isn't a DESCENDANT of the locked pin is rejected
+hubr="$(mktemp -d)"; mkdir -p "$hubr/skills/foo"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hubr/skills/foo/SKILL.md"
+( cd "$hubr" && git init -q -b main && GI add -A && GI commit -qm c1 )
+c1="$(git -C "$hubr" rev-parse HEAD)"
+printf 'x\n' > "$hubr/skills/foo/more.md"; ( cd "$hubr" && GI add -A && GI commit -qm c2 )
+c2="$(git -C "$hubr" rev-parse HEAD)"
+cons="$(mkcons foo)"
+( cd "$cons" && PLAYBOOK_REF="$c2" AGENT_PLAYBOOK_REPO="$hubr" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )   # lock at c2
+out="$(cd "$cons" && PLAYBOOK_REF="$c1" AGENT_PLAYBOOK_REPO="$hubr" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?   # bump BACK to c1
+{ [ $rc -ne 0 ] && grep -qi "not a descendant of the locked pin" <<<"$out"; } && ok "rollback guard rejects a backward pin bump" || no "rollback should reject (rc=$rc): $out"
+( cd "$cons" && PLAYBOOK_REF="$c1" ALLOW_ROLLBACK=1 AGENT_PLAYBOOK_REPO="$hubr" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_ROLLBACK=1 overrides the rollback guard" || no "override should allow the backward bump"
+rm -rf "$hubr" "$cons"
+
 rm -rf "$hub"
 echo "---"
 echo "sync: $pass passed, $failed failed."
