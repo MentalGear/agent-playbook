@@ -16,6 +16,8 @@ skills/
                                         #   keep-the-troubleshooting-doc-current discipline
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
+  verify/SKILL.md                       # runtime verification of a code change: find the surface, drive
+                                        #   the real app, probe edge cases, capture evidence, PASS/FAIL verdict
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
                                         #   subagent-framework + independent-expert-review reference
   agent-repo-layout/SKILL.md            # standard .agents/ + docs/ layout and the path→permission map
@@ -30,15 +32,15 @@ VERSION                                 # the human-facing release ref (consumer
 ```
 
 The skills interlock: **subagent-framework** is the delegation contract, **independent-expert-review** is the
-review-panel pattern it references, **project-gates** is the shared gate-manifest schema both of them point
-at, **agent-repo-layout** is the standard repo structure + permission map, **agent-access** is the
-scope/isolation vocabulary delegations declare (resolving against that map), and **agent-operating-principles**
-is the cross-cutting working discipline. A skill folder may carry
-extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`), so vendor the **whole skill
-directory**, not just the entry file.
+review-panel pattern it references, **verify** closes the loop by confirming the change works at runtime,
+**project-gates** is the shared gate-manifest schema both of them point at, **agent-repo-layout** is the
+standard repo structure + permission map, **agent-access** is the scope/isolation vocabulary delegations
+declare (resolving against that map), and **agent-operating-principles** is the cross-cutting working
+discipline. A skill folder may carry extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`),
+so vendor the **whole skill directory**, not just the entry file.
 
-All six skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
-docs live), and the **consuming repo supplies the values** — its gates in a `project-gates` manifest, the
+All seven skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs
+and docs live), and the **consuming repo supplies the values** — its gates in a `project-gates` manifest, the
 rest typically in its `CLAUDE.md`. Get that seam right and a skill drops into a non-Svelte, non-JS repo with
 only its slot values changed (the gate categories are an open list — UI a11y/visual-regression are
 *examples* of the safety-specific category, not required gates).

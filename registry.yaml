@@ -25,3 +25,6 @@ skills:
     version: 1.0.0
     sha256: d97ac62fe67fa2a897d9df156d6641223a9159659a8e5c4bf009d48abe5f110e
     requires: [project-gates, agent-access]
+  verify:
+    version: 1.0.0
+    sha256: b1a527e4995cbb7508ac408e64298db1e707fcf2f6ad5e46635a4582c34a14e2
