@@ -1,4 +1,4 @@
-# agent-playbook
+# agent-playbook [PUBLIC]
 
 Reusable, **project-agnostic** working method for coding agents (Claude Code and friends), packaged as
 load-on-demand **skills**. Extracted so the method can be shared across repos while each consuming repo keeps
