@@ -18,7 +18,7 @@ mkskill() {  # mkskill <hub> <name> <frontmatter-line>...
 }
 newhub() {  # fresh hub with the scripts + an empty registry built later
   local h; h="$(mktemp -d)"; mkdir -p "$h/scripts"
-  cp "$SRC/build-registry.sh" "$SRC/validate-skill.sh" "$h/scripts/"
+  cp "$SRC/lib.sh" "$SRC/build-registry.sh" "$SRC/validate-skill.sh" "$h/scripts/"
   echo "$h"
 }
 # validate <hub> <name> [extra-env] -> RC, OUT
@@ -78,6 +78,14 @@ echo "  extra: 1" >> "$h/skills/a/SKILL.md"
 validate "$h" a
 b2="$(sha256sum "$h/registry.yaml" | cut -d' ' -f1)"
 [ "$b1" = "$b2" ] && ok "validator non-mutating even when registry is stale" || no "validator rewrote a stale registry"
+rm -rf "$h"
+
+# 7) freshness check FAILS (not silently passes) when build-registry.sh errors (#9 — honor rc)
+h="$(newhub)"; mkskill "$h" a "name: a" "description: $LONGDESC" "version: 1.0.0"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+printf '#!/usr/bin/env bash\nexit 1\n' > "$h/scripts/build-registry.sh"   # stub that fails
+validate "$h" a
+{ [ "$RC" -ne 0 ] && grep -qi "build-registry.sh failed" <<<"$OUT"; } && ok "stale-check fails when build-registry errors" || no "build-registry failure should fail freshness (rc=$RC): $OUT"
 rm -rf "$h"
 
 echo "---"

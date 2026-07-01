@@ -7,6 +7,8 @@
 # hub only with explicit human approval (see the review-skill-proposal skill).
 # A `write` default-access hard-fails unless the human sets ALLOW_WRITE_DEFAULT=1.
 set -uo pipefail
+# shellcheck source=scripts/lib.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "validate-skill: cannot source lib.sh" >&2; exit 3; }
 shopt -s nullglob
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
@@ -23,12 +25,7 @@ fm_field() { printf '%s\n' "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -1; }
 # scalar field with any YAML inline comment + trailing space stripped (use only for
 # short scalar fields — name/version/requires/default-access/isolation — never description)
 fm_scalar() { fm_field "$1" "$2" | sed 's/[[:space:]]*#.*$//; s/[[:space:]]*$//'; }
-# Deterministic hash of ALL files in a skill dir (path+content). MUST stay byte-identical
-# to build-registry.sh / sync-agent-skills.sh / drift-check.sh, or hashes will disagree.
-skill_dir_hash() {
-  ( cd "$1" && find . -type f | LC_ALL=C sort | while IFS= read -r p; do
-      printf '%s\0' "$p"; sha256sum "$p" | cut -d' ' -f1; done | sha256sum | cut -d' ' -f1 )
-}
+# skill_dir_hash() comes from lib.sh — the single source of truth.
 
 validate_one() {
   local name="$1" f="skills/$1/SKILL.md" before="$fails"
@@ -86,7 +83,9 @@ validate_one() {
   # registry carries this skill with a matching whole-dir content hash
   local sha; sha="$(skill_dir_hash "skills/$name")"
   if [ -f registry.yaml ]; then
-    grep -q "sha256: $sha" registry.yaml || fail "$name: registry.yaml has no entry with this skill's dir hash — run build-registry.sh"
+    # Anchored, fixed-string, whole-line match: the registry line is exactly "    sha256: <sha>".
+    # (Unanchored/regex matching could match a prefix or treat a corrupted value as a pattern.)
+    grep -qxF "    sha256: $sha" registry.yaml || fail "$name: registry.yaml has no entry with this skill's dir hash — run build-registry.sh"
   else
     fail "registry.yaml missing — run build-registry.sh"
   fi
@@ -98,12 +97,16 @@ validate_one() {
 # Regenerate into place, capture, then restore the committed file before reporting.
 check_registry_fresh() {
   [ -f scripts/build-registry.sh ] || return 0
-  local before after; before="$(mktemp)"; after="$(mktemp)"
+  local before after rc; before="$(mktemp)"; after="$(mktemp)"
   cp registry.yaml "$before" 2>/dev/null || : > "$before"
-  bash scripts/build-registry.sh >/dev/null 2>&1
+  bash scripts/build-registry.sh >/dev/null 2>&1; rc=$?
   cp registry.yaml "$after" 2>/dev/null || : > "$after"
   cp "$before" registry.yaml 2>/dev/null || true   # restore — never leave a regenerated file behind
-  diff -q "$before" "$after" >/dev/null 2>&1 || fail "registry.yaml is stale — run build-registry.sh and commit it"
+  if [ "$rc" -ne 0 ]; then
+    fail "build-registry.sh failed (rc=$rc) — cannot confirm registry.yaml freshness"
+  else
+    diff -q "$before" "$after" >/dev/null 2>&1 || fail "registry.yaml is stale — run build-registry.sh and commit it"
+  fi
   rm -f "$before" "$after"
 }
 
