@@ -63,6 +63,16 @@ c="$(mkcons '"foo": "1.2.0"')"
 out="$(uc "$c" env)"; grep -q "foo: 1.2.0 → 1.10.0" <<<"$out" && ok "semver: 1.10.0 > 1.2.0 (sort -V)" || no "semver wrong: $out"
 rm -rf "$c" "$HUB"
 
+# 7) offline / no-registry source: skip with a message and exit 0 (advisory — a broken/unreachable hub
+#    must NOT fail update-check; the weekly workflow surfaces it as a ::warning:: instead). An empty SRC
+#    dir has no registry.yaml, exercising the same exit-0-with-message contract as an offline clone.
+empty="$(mktemp -d)"
+c="$(mkcons '"foo": "1.0.0"')"
+out="$(cd "$c" && AGENT_PLAYBOOK_SRC="$empty" bash scripts/update-check.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && grep -qi "no registry.yaml" <<<"$out"; } \
+  && ok "no-registry/offline source skips with exit 0 (advisory)" || no "no-registry should exit 0 + message (rc=$rc): $out"
+rm -rf "$c" "$empty"
+
 echo "---"
 echo "update-check: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]

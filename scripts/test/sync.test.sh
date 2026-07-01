@@ -83,14 +83,16 @@ lp="$(jq -r '.pinned_sha' "$cons/.agents/skills-lock.json" 2>/dev/null)"
 rm -rf "$cons"
 
 # 9) ancestry REJECT: a commit only on a side branch (not an ancestor of default) is refused
-( cd "$hub" && GI checkout -q -b side && printf 'x\n' > skills/foo/extra.md && GI add -A && GI commit -qm side )
-sidesha="$(git -C "$hub" rev-parse side)"; ( cd "$hub" && GI checkout -q main )
+#    (own hub — must not mutate the shared $hub that cases 11-13 vendor from)
+hub9="$(mkhub)"
+( cd "$hub9" && GI checkout -q -b side && printf 'x\n' > skills/foo/extra.md && GI add -A && GI commit -qm side )
+sidesha="$(git -C "$hub9" rev-parse side)"; ( cd "$hub9" && GI checkout -q main )
 cons="$(mkcons foo)"
-out="$(cd "$cons" && PLAYBOOK_REF="$sidesha" AGENT_PLAYBOOK_REPO="$hub" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+out="$(cd "$cons" && PLAYBOOK_REF="$sidesha" AGENT_PLAYBOOK_REPO="$hub9" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
 { [ $rc -ne 0 ] && grep -qi "not an ancestor" <<<"$out"; } && ok "ancestry rejects a fork-only/off-branch pin" || no "ancestry should reject side-branch pin (rc=$rc): $out"
 # ...and ALLOW_NONDEFAULT_PIN=1 overrides it
-( cd "$cons" && PLAYBOOK_REF="$sidesha" ALLOW_NONDEFAULT_PIN=1 AGENT_PLAYBOOK_REPO="$hub" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_NONDEFAULT_PIN=1 overrides the ancestry check" || no "override should allow the side pin"
-rm -rf "$cons"
+( cd "$cons" && PLAYBOOK_REF="$sidesha" ALLOW_NONDEFAULT_PIN=1 AGENT_PLAYBOOK_REPO="$hub9" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 ); [ $? -eq 0 ] && ok "ALLOW_NONDEFAULT_PIN=1 overrides the ancestry check" || no "override should allow the side pin"
+rm -rf "$cons" "$hub9"
 
 # 10) require_tools: missing jq => exit 3 + hint
 nobin="$(mktemp -d)"; ln -s "$(command -v bash)" "$nobin/bash"
@@ -170,6 +172,33 @@ out="$(cd "$cons" && AGENT_PLAYBOOK_REPO="$hubx" bash scripts/sync-agent-skills.
   && ok "re-sync rejects a lockfile pinned off the default branch (round-3 regression guard)" \
   || no "re-sync must reject an off-branch locked pin even when resolved==locked (rc=$rc): $out"
 rm -rf "$cons" "$hubx"
+
+# 17) ASYMMETRY (documented on purpose): the AGENT_PLAYBOOK_SRC local/dev path intentionally TRUSTS the
+#     checkout and does NOT run the ancestry check — an off-default-branch HEAD is vendored without
+#     rejection. The security boundary is the CLONE path (cases 9 + 16), which CI uses. This test pins the
+#     asymmetry so it can't change silently and be mistaken for a bug.
+hub17="$(mkhub)"
+( cd "$hub17" && GI checkout -q -b side && printf 'x\n' > skills/foo/extra.md && GI add -A && GI commit -qm side )   # leave HEAD off default
+cons="$(mkcons foo)"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hub17" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && ! grep -qi "not an ancestor" <<<"$out"; } \
+  && ok "AGENT_PLAYBOOK_SRC path trusts local HEAD (no ancestry check — CI uses the clone path)" \
+  || no "SRC path should vendor local HEAD without ancestry (rc=$rc): $out"
+rm -rf "$cons" "$hub17"
+
+# 18) rollback guard fail-OPEN (documented): when the locked pin is ABSENT from fetched history (e.g. a hub
+#     squash/rewrite dropped it), the guard WARNs and proceeds rather than blocking. An off-branch NEW pin
+#     is still caught earlier by the ancestry check, so this fail-open doesn't open a hole — pin the behavior.
+hub18="$(mkhub)"; ( cd "$hub18" && printf 'y\n' > skills/foo/more.md && GI add -A && GI commit -qm c2 )
+head18="$(git -C "$hub18" rev-parse HEAD)"
+cons="$(mkcons foo)"
+( cd "$cons" && AGENT_PLAYBOOK_REPO="$hub18" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )   # lock at hub18 HEAD
+sed -i 's/"pinned_sha": "[0-9a-f]*"/"pinned_sha": "'"$(printf 'd%039d' 0)"'"/' "$cons/.agents/skills-lock.json"   # foreign locked pin
+out="$(cd "$cons" && PLAYBOOK_REF="$head18" AGENT_PLAYBOOK_REPO="$hub18" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && grep -qi "not present in the fetched history" <<<"$out"; } \
+  && ok "rollback guard fails open (WARN + proceed) when the locked pin is absent from history" \
+  || no "rollback fail-open expected WARN+proceed (rc=$rc): $out"
+rm -rf "$cons" "$hub18"
 
 rm -rf "$hub"
 echo "---"
