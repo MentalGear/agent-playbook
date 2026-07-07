@@ -1,23 +1,24 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building, and default to Bun for JS/TS tooling (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Five project-agnostic habits for coding agents — research existing open source before building (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); and test real (non-throwaway) code test-first (§5). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
 version: 1.1.0
 ---
 
 # Agent operating principles
 
-Project-agnostic working discipline for coding agents. Four habits that pay for themselves repeatedly;
+Project-agnostic working discipline for coding agents. Five habits that pay for themselves repeatedly;
 **load the relevant section for the moment you're in:**
 - **§1 Research before you build** — when a new component/feature/capability is needed.
-- **§2 Debug by method** — when a reported bug isn't obvious from the code.
-- **§3 Record what you learned** — after any gotcha that cost real debugging time.
-- **§4 Test real code** — when code stops being a throwaway spike and becomes something you'll keep.
+- **§2 Reach for Bun** — when you need a JS/TS package manager, script runner, or test runner.
+- **§3 Debug by method** — when a reported bug isn't obvious from the code.
+- **§4 Record what you learned** — after any gotcha that cost real debugging time.
+- **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
 >   folder).
-> - **Troubleshooting reference** (§3) — the one doc that holds this repo's gotchas (e.g.
+> - **Troubleshooting reference** (§4) — the one doc that holds this repo's gotchas (e.g.
 >   `docs/debug/troubleshooting.md`).
 
 ## 1. Research existing open source before building anything new
@@ -39,18 +40,21 @@ none fit.
 > **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
 > through an `independent-expert-review` panel before you commit to a build.
 
-**Default web-dev toolchain — reach for Bun.** Distinct from the research habit above (this is about which
-tool to *invoke*, not what to *build*): when you need a JavaScript/TypeScript **tool** — a package manager,
-script runner, or test runner — default to **[Bun](https://bun.sh)** (`bun install`, `bun run`, `bun test`,
-`bunx …`) over `npm`/`pnpm`/`yarn`/`npx`. **Match the host first, though:** if the project already carries an
-npm/pnpm/yarn lockfile or a stated toolchain, use that — a second lockfile is its own bug — so Bun is the
-default for *greenfield* JS tooling and where the project hasn't committed to one. It's the toolchain the
-playbook's own examples use — the `project-gates` gate examples (`bun run check`/`lint`/`test:unit`) and the
-known-good devcontainer in `agent-repo-layout` (Bun as installer/PM; Node stays the runtime) — so staying on
-it keeps commands and CI consistent. When you do deviate, note why in the project's gate manifest
-(`project-gates`) or next to its lockfile.
+## 2. Default web-dev toolchain — reach for Bun
 
-## 2. Debug by method, not by guesswork — the troubleshooting playbook
+When you need a JavaScript/TypeScript **tool** — a package manager, script runner, or test runner — default
+to **[Bun](https://bun.sh)** (`bun install`, `bun run`, `bun test`, `bunx …`) over `npm`/`pnpm`/`yarn`/`npx`.
+This is about which tool to *invoke*, not what to *build* — that's §1.
+
+**Match the host first, though.** If the project already carries an npm/pnpm/yarn lockfile or a stated
+toolchain, use that — a second lockfile is its own bug — so Bun is the default for *greenfield* JS tooling and
+where the project hasn't committed to one. It's the toolchain the playbook's own examples use — the
+`project-gates` gate examples (`bun run check`/`lint`/`test:unit`) and the known-good devcontainer in
+`agent-repo-layout` (Bun as installer/PM; Node stays the runtime) — so staying on it keeps commands and CI
+consistent. When you do deviate, note why in the project's gate manifest (`project-gates`) or next to its
+lockfile.
+
+## 3. Debug by method, not by guesswork — the troubleshooting playbook
 
 When a reported bug **isn't obvious from the code**, don't guess-and-patch the symptom. Work the playbook:
 
@@ -70,7 +74,7 @@ When a reported bug **isn't obvious from the code**, don't guess-and-patch the s
 
 Skipping straight to step 6 with a guessed patch is the anti-pattern this exists to prevent.
 
-## 3. Keep the troubleshooting reference current — record what you learned
+## 4. Keep the troubleshooting reference current — record what you learned
 
 Maintain **one troubleshooting reference** in the repo (the project names the file, e.g.
 `docs/debug/troubleshooting.md`). It is the project's institutional memory for *"things that bit us and how
@@ -89,10 +93,10 @@ way you'd *search* for it (the error text, the surprising behavior), so future-y
 notice, not the cause you don't yet know. Keep the doc **one coherent reference**: if a new entry doesn't
 fit the existing structure, reorganize so it stays scannable rather than bolting on an orphan note.
 
-This closes the loop on §2: the playbook is how you find a root cause; this is how the next agent skips the
+This closes the loop on §3: the playbook is how you find a root cause; this is how the next agent skips the
 hunt entirely.
 
-## 4. Test real code — spikes are free, kept code is test-driven
+## 5. Test real code — spikes are free, kept code is test-driven
 
 Throwaway exploration needs no tests: spike freely to learn an API, try a layout, or prove an idea. But the
 moment code becomes **real** — you'll keep it, ship it, something else will depend on it, or you're about to
@@ -104,7 +108,7 @@ you'll delete is not. The tell is *permanence* — if it would hurt for this to 
 a test now, and writing that test first is the cheapest time to do it.
 
 Test-*first*, not test-after: the test pins the intended behaviour before the implementation biases it,
-forces a testable design, and hands you the regression guard from §2 (step 6) for free. Test-after tends to
+forces a testable design, and hands you the regression guard from §3 (step 6) for free. Test-after tends to
 test what you happened to build — and often never gets written. (This writes the `logic`
 gate of the project's gate manifest — see the **project-gates** skill — which the `subagent-framework` flow
 then runs; TDD just means you write it first and let it drive the design.)
