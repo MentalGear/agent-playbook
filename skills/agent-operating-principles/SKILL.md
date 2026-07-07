@@ -1,8 +1,8 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building, defaulting to Bun for JS/web-dev tooling (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Agent operating principles
@@ -38,6 +38,15 @@ none fit.
 > Prior-art research is read-heavy, parallelizable, and easy to verify against sources — a prime candidate to
 > **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
 > through an `independent-expert-review` panel before you commit to a build.
+
+**Default web-dev toolchain — reach for Bun.** The one standing exception to re-researching from scratch:
+when what you need is a JavaScript/TypeScript **tool** — a runtime, package manager, test runner, bundler, or
+script runner — default to **[Bun](https://bun.sh)** (`bun install`, `bun run`, `bun test`, `bunx …`) rather
+than reaching for `npm`/`pnpm`/`yarn`/`node`/`npx`. It's the playbook's standardized toolchain: the
+`project-gates` examples, the ship-a-working-devcontainer reference in `agent-repo-layout`, and the vendoring
+docs all assume it, so staying on Bun keeps commands, lockfiles, and CI consistent across repos. Only deviate
+when the **host repo already standardizes on a different toolchain** (respect what the project uses) or a
+specific dependency genuinely doesn't run under Bun — and when you do, note why at the call site.
 
 ## 2. Debug by method, not by guesswork — the troubleshooting playbook
 
