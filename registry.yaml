@@ -8,8 +8,8 @@ skills:
     sha256: b4139c124c005d4bcfbb2f4b8e4482a2ead720f6597ead185a8fe6ebdd9e187f
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 1.0.0
-    sha256: 5ae059eb80ab44a15459ada742dc02a91a29616b4f40d1af1a84d20eb3087bf6
+    version: 1.1.0
+    sha256: 8027955af0b92469c0dd392b1de8a9982d5ae6c6872dd45db2e700e50280545a
   agent-repo-layout:
     version: 1.1.0
     sha256: ad4f42db4bac8e1d6e02fbe90f4ff8da036bba133a1923f67d95273c15d738c9
