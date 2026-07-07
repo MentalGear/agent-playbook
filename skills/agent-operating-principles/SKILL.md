@@ -1,6 +1,6 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building, defaulting to Bun for JS/web-dev tooling (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Four project-agnostic habits for coding agents — research existing open source before building, and default to Bun for JS/TS tooling (§1); debug by the troubleshooting playbook instead of guess-and-patch (§2); keep the project's troubleshooting reference current by recording each hard-won finding (§3); and test real (non-throwaway) code test-first (§4). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
 version: 1.1.0
 ---
@@ -39,14 +39,16 @@ none fit.
 > **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
 > through an `independent-expert-review` panel before you commit to a build.
 
-**Default web-dev toolchain — reach for Bun.** The one standing exception to re-researching from scratch:
-when what you need is a JavaScript/TypeScript **tool** — a runtime, package manager, test runner, bundler, or
-script runner — default to **[Bun](https://bun.sh)** (`bun install`, `bun run`, `bun test`, `bunx …`) rather
-than reaching for `npm`/`pnpm`/`yarn`/`node`/`npx`. It's the playbook's standardized toolchain: the
-`project-gates` examples, the ship-a-working-devcontainer reference in `agent-repo-layout`, and the vendoring
-docs all assume it, so staying on Bun keeps commands, lockfiles, and CI consistent across repos. Only deviate
-when the **host repo already standardizes on a different toolchain** (respect what the project uses) or a
-specific dependency genuinely doesn't run under Bun — and when you do, note why at the call site.
+**Default web-dev toolchain — reach for Bun.** Distinct from the research habit above (this is about which
+tool to *invoke*, not what to *build*): when you need a JavaScript/TypeScript **tool** — a package manager,
+script runner, or test runner — default to **[Bun](https://bun.sh)** (`bun install`, `bun run`, `bun test`,
+`bunx …`) over `npm`/`pnpm`/`yarn`/`npx`. **Match the host first, though:** if the project already carries an
+npm/pnpm/yarn lockfile or a stated toolchain, use that — a second lockfile is its own bug — so Bun is the
+default for *greenfield* JS tooling and where the project hasn't committed to one. It's the toolchain the
+playbook's own examples use — the `project-gates` gate examples (`bun run check`/`lint`/`test:unit`) and the
+known-good devcontainer in `agent-repo-layout` (Bun as installer/PM; Node stays the runtime) — so staying on
+it keeps commands and CI consistent. When you do deviate, note why in the project's gate manifest
+(`project-gates`) or next to its lockfile.
 
 ## 2. Debug by method, not by guesswork — the troubleshooting playbook
 

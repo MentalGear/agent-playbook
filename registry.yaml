@@ -9,7 +9,7 @@ skills:
     requires: [agent-repo-layout]
   agent-operating-principles:
     version: 1.1.0
-    sha256: 5ff1b7f361f05afd1ec2bcdeb86e1b866bb0fc6cad9cd610083287a65568dbab
+    sha256: dc3a91bac038dac83e789af68bb48aec0b251bf325b3e8e176748d9c877377b3
   agent-repo-layout:
     version: 1.1.0
     sha256: ad4f42db4bac8e1d6e02fbe90f4ff8da036bba133a1923f67d95273c15d738c9
