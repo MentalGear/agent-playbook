@@ -30,6 +30,8 @@ Keep the step-by-step narration (what you did, tool-by-tool) **above** a horizon
 ...
 ```
 
+Use **bullet points**, not dense text.
+
 Below the rule, in this order (drop any section that's empty):
 1. **Outcome first.** Lead with the conclusion, not the process — what now exists / works / was decided.
    If there's a verdict (pass/fail, merged/blocked), state it plainly in the first line.
