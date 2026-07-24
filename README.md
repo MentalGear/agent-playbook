@@ -25,6 +25,8 @@ skills/
   propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
   review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
+  stuck-on-a-problem/SKILL.md           # recognize repeated same-class fixes as a local-minimum signal;
+                                        #   step up a level of abstraction instead of patching again
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
