@@ -15,7 +15,7 @@ skills:
     sha256: ad4f42db4bac8e1d6e02fbe90f4ff8da036bba133a1923f67d95273c15d738c9
   end-of-round-report:
     version: 1.0.0
-    sha256: 09c0fde667331118e30c8f86fbf5c56af98b3780ceafd4b5d167251b4a946c3b
+    sha256: 29d6c93e8ab9c0e6587261ac99c14d9ba250c755d0fe2c2923e008f5a6c44c43
   independent-expert-review:
     version: 1.0.0
     sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62
@@ -31,6 +31,9 @@ skills:
   review-skill-proposal:
     version: 1.0.0
     sha256: ee5d2a69962ada94553521efdb365c99ec0ec22bdd92e851c7a3f055f9214828
+  stuck-on-a-problem:
+    version: 1.0.0
+    sha256: 3bcb9edd24c2c573b26b6dc48677c37c81927fd251168e4408a113cd8b048bfe
   subagent-framework:
     version: 1.0.0
     sha256: d97ac62fe67fa2a897d9df156d6641223a9159659a8e5c4bf009d48abe5f110e

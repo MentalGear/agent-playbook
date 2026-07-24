@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Generate registry.yaml from the skills' frontmatter — the published index that
 # downstream consumers check for updates (new skills, version bumps, deprecations).
+# Also verifies every skills/*/ directory is listed in README.md's "What's here" tree,
+# so a new skill can't silently go undocumented there.
 # Run after changing any skill, and commit the result. CI can assert it's up to date
 # (build-registry then `git diff --exit-code`).
 set -euo pipefail
@@ -48,3 +50,22 @@ yesc()      { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }   # escape for 
 } > "$out"
 
 echo "Wrote $out ($(grep -c '^  [a-z]' "$out") skills)"
+
+# README.md's "What's here" tree is hand-curated prose (cross-references, nested files like
+# subagent-framework/reference.md) — not worth regenerating and flattening. Instead, catch the
+# exact drift that motivated this check: a skill added here but never mentioned there. Fixture
+# "hubs" (e.g. scripts/test/*.test.sh) build a registry with no README.md at all — skip there,
+# only enforce when this is a real checkout of the hub.
+if [ -f README.md ]; then
+  missing=()
+  for d in skills/*/; do
+    name="$(basename "$d")"
+    [ -f "${d}SKILL.md" ] || continue
+    grep -qE "^  ${name}/" README.md || missing+=("$name")
+  done
+  if [ "${#missing[@]}" -gt 0 ]; then
+    echo "::error::README.md's \"What's here\" tree is missing: ${missing[*]}" >&2
+    echo "Add a line for each under '## What's here' in README.md, then re-run." >&2
+    exit 1
+  fi
+fi
