@@ -15,7 +15,7 @@ skills:
     sha256: ad4f42db4bac8e1d6e02fbe90f4ff8da036bba133a1923f67d95273c15d738c9
   end-of-round-report:
     version: 1.0.0
-    sha256: 29d6c93e8ab9c0e6587261ac99c14d9ba250c755d0fe2c2923e008f5a6c44c43
+    sha256: 7e4091803f7899375a5c78ecbf68138c3a9e1d124340c5786eb9b7201d99f093
   independent-expert-review:
     version: 1.0.0
     sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62
