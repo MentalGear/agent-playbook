@@ -27,17 +27,31 @@ Keep the step-by-step narration (what you did, tool-by-tool) **above** a horizon
 # ⎯⎯ Results of last round ⎯⎯
 
 **Outcome —** <the conclusion, in one or two lines, first>
-...
+
+**Changes**
+- <change one, one line>
+- <change two, one line>
+
+**Status**
+- <verification one — gate/test name and result>
+- <artifact link>
+
+**Next —** <the single decision/question, or "nothing needed">
 ```
 
-Use **bullet points**, not dense text.
+Use **bullet points**, not dense text — every list of changes, statuses, or artifacts below the rule
+must render as a `-` list, never as a paragraph packing multiple facts into one block of prose. One
+bullet per change/fact; don't merge them with "and"/commas into a run-on line.
 
 Below the rule, in this order (drop any section that's empty):
 1. **Outcome first.** Lead with the conclusion, not the process — what now exists / works / was decided.
    If there's a verdict (pass/fail, merged/blocked), state it plainly in the first line.
-2. **Status & artifacts.** The current state, verification that backs the claim (gates green, tests passing —
-   say which), and **links to the artifacts** (PRs, commits, files) so they're clickable, not described.
-3. **Next decision / question.** End with the **single** thing you need from the user — the choice to make or
+2. **Changes, as bullets.** Every distinct change (file touched, fix applied, decision made) gets its own
+   bullet — one line, one fact. Never fold multiple changes into a single sentence.
+3. **Status & artifacts, as bullets.** The current state, verification that backs the claim (gates green,
+   tests passing — say which), and **links to the artifacts** (PRs, commits, files) so they're clickable,
+   not described — each as its own bullet.
+4. **Next decision / question.** End with the **single** thing you need from the user — the choice to make or
    the approval to give. If there's nothing, say "nothing needed" so the round closes cleanly.
 
 ## Principles
