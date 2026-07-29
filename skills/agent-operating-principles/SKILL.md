@@ -1,8 +1,8 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, and when deciding whether code needs tests. Five project-agnostic habits for coding agents — research existing open source before building (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); and test real (non-throwaway) code test-first (§5). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, when deciding whether code needs tests, and when a spike turns out to matter. Five project-agnostic habits for coding agents — research existing open source before building (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); and test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Agent operating principles
@@ -13,7 +13,8 @@ Project-agnostic working discipline for coding agents. Five habits that pay for 
 - **§2 Reach for Bun** — when you need a JS/TS package manager, script runner, or test runner.
 - **§3 Debug by method** — when a reported bug isn't obvious from the code.
 - **§4 Record what you learned** — after any gotcha that cost real debugging time.
-- **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep.
+- **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep (and
+  commit the spike itself, out of scratch, once it's load-bearing evidence).
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
@@ -112,3 +113,19 @@ forces a testable design, and hands you the regression guard from §3 (step 6) f
 test what you happened to build — and often never gets written. (This writes the `logic`
 gate of the project's gate manifest — see the **project-gates** skill — which the `subagent-framework` flow
 then runs; TDD just means you write it first and let it drive the design.)
+
+### A load-bearing spike doesn't stay in scratch — commit it as evidence
+
+The gitignored scratch space (see **agent-repo-layout**) is for work that is *genuinely* disposable. A spike
+stops being disposable the moment something depends on it: it's the **evidence behind a decision**, a
+benchmark or measurement someone will cite, a **reproduction** of a bug, or a prototype the design now
+assumes. At that point it leaves scratch and gets **committed**, in the round that produced it:
+
+- **Kept code** → its real home under source, test-first per the rule above.
+- **The finding it proves** (benchmark numbers, the option that won, why) → the project's research folder.
+- **A reproduction** → alongside the troubleshooting entry it backs (§4), so the next agent can re-run it.
+
+Scratch is wiped without notice and never reviewed — anything left there is gone, and a claim whose evidence
+is gone is just an assertion. The test is *dependence, not size*: if a decision, a doc, or a future agent
+would have to re-derive it, it belongs in git. When in doubt, commit it — an unused committed file costs a
+few diff lines; a lost one costs the whole investigation.
