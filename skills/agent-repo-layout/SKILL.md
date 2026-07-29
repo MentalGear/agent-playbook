@@ -1,8 +1,8 @@
 ---
 name: agent-repo-layout
-description: Use when setting up a repo for agents, or when unsure where an agent-facing artifact belongs or whether you may write to a path. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log) and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, and the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
+description: Use when setting up a repo for agents, when unsure where an agent-facing artifact belongs or whether you may write to a path, or when deciding whether work can stay in gitignored scratch. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log), the rule that scratch holds only genuinely throwaway work while load-bearing spikes get committed as evidence, and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, plus the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Agent repo layout — where things live, and what may write where
@@ -21,7 +21,7 @@ this map), **project-gates** (the gate manifest), and the **subagent-framework**
   skills/        # vendored skills            — READ-ONLY (sync-managed; "do not edit here")
   gates.yaml     # the project-gates manifest — READ-ONLY config
   access.yaml    # the path→permission map    — READ-ONLY config (this skill's slot)
-  scratch/       # agent scratch space        — WRITE, gitignored (throwaway)
+  scratch/       # agent scratch space        — WRITE, gitignored (throwaway ONLY — see below)
 docs/
   research/      # prior-art / design / review-round captures — APPEND (one file per topic/round, dated)
   debug/         # the troubleshooting reference — APPEND (a folder so it can hold one file per topic)
@@ -68,6 +68,12 @@ paths:
 ## How an agent uses this
 1. **Placing an artifact?** Put it in the role's standard folder (a debugging finding → `docs/debug/`; a
    research capture → `docs/research/`; a delegation entry → `docs/subagent-log/`; throwaway → scratch).
+   **Scratch is for genuinely disposable work only** — it's gitignored, unreviewed, and wiped without
+   notice. A spike or prototype that turns out to be **load-bearing** — the evidence behind a decision, a
+   benchmark someone will cite, a bug reproduction, a prototype the design now assumes — must be **moved out
+   of scratch and committed in the round that produced it** (kept code → source, with tests; the finding →
+   `docs/research/`; a reproduction → next to its `docs/debug/` entry). Evidence left in scratch is lost, and
+   a claim with no surviving evidence is just an assertion. See **agent-operating-principles** §5.
 2. **About to write a path?** Check `.agents/access.yaml`: `read-only` → don't; `append` → add, don't rewrite;
    `write` → free; `scoped` → only within the delegation's `agent-access` scope; `approval` → show the diff
    and get a human yes first (the contract files).
