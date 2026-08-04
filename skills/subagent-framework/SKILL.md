@@ -1,9 +1,10 @@
 ---
 name: subagent-framework
-description: Use when delegating work to subagents — deciding whether a task is worth delegating, writing the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
+description: Use before building anything — implementation is delegated to subagents by default, not written in the main loop. This skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
 user-invocable: false
-version: 1.0.0
+version: 1.1.0
 requires: [project-gates, agent-access]
+global_agent_file_hint: Don't build in the main loop — delegate implementation to subagents by default. Exceptions: small changes (<~15 min / <~100 lines) and delegation that has repeatedly failed. See the subagent-framework skill, §1a/§1b.
 ---
 
 # Subagent framework — delegate work, keep the judgment
@@ -33,6 +34,11 @@ the work saved.
    architecture, ambiguity, and final synthesis in the main loop.
 5. **Spec in, distilled result out.** Precise contract (§3); compact structured return so the main loop's
    context isn't flooded (never read raw agent transcripts into context).
+6. **Don't build in the main loop — delegate the build.** Writing and editing code, mechanical sweeps, and
+   breadth work go to a worker by default (§1). The main loop designs, decomposes, verifies, and commits —
+   it does not type the implementation. This doesn't soften §0.4 — design, architecture, ambiguity, and
+   synthesis stay in the main loop; *execution* leaves it. Building in the main loop is the exception, and
+   there are exactly two: small stuff (§1a) and delegation that has repeatedly failed (§1b).
 
 **Standing rule (validated in practice):** delegating to a cheaper/faster model *is* worth it, but on a
 strict division of labour — **the worker does breadth + execution; the orchestrator keeps design +
@@ -40,7 +46,11 @@ verification.** Every delegation that holds to that split lands cleanly. The fai
 letting a subagent make the design calls or self-certify its own gates. Delegate for breadth and for
 execution; never delegate the architecture or the gate.
 
-## 1. When to delegate (decision matrix)
+## 1. When to delegate (default: delegate — see §0.6)
+
+**The default is delegate.** The question isn't "is this worth delegating?" — it's "does this hit one of
+the two exceptions below?" The matrix sorts *what* the worker gets versus what the orchestrator keeps; it
+is not licence to keep the implementation in the main loop.
 
 | Signal | Delegate to a worker | Keep with the orchestrator |
 | --- | --- | --- |
@@ -50,13 +60,27 @@ execution; never delegate the architecture or the gate.
 | Shape | Parallelizable / repetitive | Cross-cutting synthesis |
 | Verifiability | Clear acceptance checks | "I'll know it when I see it" |
 
-### 1a. Size thresholds (the "is it worth delegating?" gate)
+### 1a. Exception 1 — small stuff
 - **Just do it in the main loop** when the task is **< ~15 min / < ~100 lines** of straightforward change —
   the contract-writing + logging + verification overhead exceeds the saving. *Exception:* delegate anyway if
   **parallelism** is the goal (N independent items at once).
 - **Single worker** for a bounded task above that line.
 - **Parallel fan-out / panel** only when work is genuinely independent or needs multiple perspectives
   (see the **independent-expert-review** skill).
+
+### 1b. Exception 2 — delegation has repeatedly failed
+When delegation keeps failing on a task, the main loop builds it itself. The bar is **two distinct failed
+attempts**, not one bad round:
+1. **Attempt 1 exhausts the §4 repair cap** (1 round for < ~1 h tasks, 2 for larger).
+2. **Before re-delegating, suspect your own contract.** A worker that drifts or stalls is usually an
+   under-specified §3 hand-off — missing step outline, unstated design call, scope too wide. That's an
+   orchestrator bug; fix the spec (or split the task) and re-delegate once.
+3. **If that re-scoped attempt also fails, take it over.** Discard any isolated workspace rather than
+   merging it (§4), and build from the failure evidence — the failing gate output is now your spec.
+
+**Log the fallback** in the delegation log with the reason. Repeated fallbacks on the same *kind* of task
+are the signal that matters: that task type needs a better contract, a stronger worker tier, or it isn't
+delegatable (§6) — one-off fallbacks are noise, a pattern is a fix.
 
 ## 2. Roles & model selection
 Pick by **role**, then map the role to whatever model tier fits your provider:
@@ -133,6 +157,9 @@ two-tier logging, and rotation** live in **reference.md**.
 - **Don't delegate the undelegatable** — ambiguous scope / product calls / no writable acceptance checks.
   Tighten to a spec first, or keep it.
 - **Parallel writers isolate** (worktrees) **and join-verify** (§4).
+- **Don't quietly build it yourself** — main-loop implementation outside §1a/§1b is exactly the anti-pattern
+  §0.6 exists to prevent. If you're reaching for Edit/Write on real (non-trivial) work, name which exception
+  applies.
 
 ---
 *Reference detail (scorecard, logging, tooling map): see `reference.md` in this skill. Review panels: see
