@@ -88,6 +88,21 @@ validate "$h" a
 { [ "$RC" -ne 0 ] && grep -qi "build-registry.sh failed" <<<"$OUT"; } && ok "stale-check fails when build-registry errors" || no "build-registry failure should fail freshness (rc=$RC): $OUT"
 rm -rf "$h"
 
+# 8) global_agent_file_hint: absent is fine; within budget passes; over budget REJECTS
+h="$(newhub)"; mkskill "$h" nohint "name: nohint" "description: $LONGDESC" "version: 1.0.0"
+mkskill "$h" hinted "name: hinted" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: Short default rule. See hinted skill."
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+validate "$h" nohint
+[ "$RC" -eq 0 ] && ok "no global_agent_file_hint is fine (optional field)" || no "absent hint should pass (rc=$RC): $OUT"
+validate "$h" hinted
+[ "$RC" -eq 0 ] && ok "in-budget global_agent_file_hint passes" || no "short hint should pass (rc=$RC): $OUT"
+long="$(printf 'x%.0s' $(seq 1 410))"
+mkskill "$h" oversized "name: oversized" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: $long"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+validate "$h" oversized
+{ [ "$RC" -ne 0 ] && grep -qi "global_agent_file_hint is" <<<"$OUT"; } && ok "over-budget global_agent_file_hint REJECTS" || no "oversized hint should reject (rc=$RC): $OUT"
+rm -rf "$h"
+
 echo "---"
 echo "validate-skill: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]

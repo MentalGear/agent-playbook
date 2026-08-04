@@ -75,7 +75,9 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    in the diff. Re-run with no args to stay at the locked pin; `PLAYBOOK_REF=<new-sha>` to bump it.
 3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
    into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
-   and writes the lockfile (pin + per-skill version). **Integrity is a re-sync + git gate, not a hash:** `sync`
+   writes the lockfile (pin + per-skill version), and (re)generates **`.agents/GLOBAL_HINTS.md`** from the
+   `global_agent_file_hint` frontmatter of whichever vendored skills declare one (most don't — see
+   [Global agent hints](#global-agent-hints) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
    is deterministic, so CI runs `scripts/sync-agent-skills.sh && git status --porcelain -- .agents .claude`
    (`git status --porcelain`, not `git diff --exit-code`, so an untracked orphaned skill dir is caught too) —
    any hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces drift and fails the build.
@@ -84,17 +86,42 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    commands, flow — see the `project-gates` skill for the schema). This is the structured source of truth for
    your gates; see [`skills/project-gates/SKILL.md`](skills/project-gates/SKILL.md) for a filled example.
 5. **Wire it into your `CLAUDE.md`**: replace the general guidance with thin skill-pointers that defer to the
-   manifest. Generic form:
+   manifest, plus **one static import line** for the generated hints file (see below). Generic form:
+   > *@.agents/GLOBAL_HINTS.md*
+   >
    > *Delegate per the `subagent-framework` skill; this project's gates are declared in `.agents/gates.yaml`
    > (`project-gates`). Log each delegation in `<log path>`. For review panels use the
    > `independent-expert-review` skill; persist rounds in `<research dir>`.*
 
    Concrete example (the Svelte/SvelteKit repo this was extracted from):
+   > *@.agents/GLOBAL_HINTS.md*
+   >
    > *Delegate per the **`subagent-framework`** skill. **This project's gates** live in
    > `.agents/gates.yaml` (per **`project-gates`**) — always `bun run check` + `bun run lint`; logic
    > `bun run test:unit --run`; safety-specific `bun run test:stories` (axe) + `scripts/vrt.sh`. **Log every
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
+
+### Global agent hints
+
+Most skills are **load-on-demand** — the right fit for reference material you consult *when* a matching
+situation comes up. A few encode a **default posture** instead — a rule that should hold on every turn,
+before the agent ever thinks to look for a skill about it (e.g. `subagent-framework`'s "delegate the build by
+default"). Load-on-demand visibility is the wrong shape for that: it only fires once the agent is already
+considering the topic.
+
+A skill that needs this declares an optional `global_agent_file_hint:` frontmatter field — one short line
+(a stated default + its exception(s) + a pointer back to the skill; `validate-skill.sh` caps it at 400
+chars). `sync-agent-skills.sh` collects these from whatever's currently in your vendored `SKILLS` set and
+writes them to `.agents/GLOBAL_HINTS.md`, regenerated every sync. Import that file into your agent's
+**always-loaded** instructions once — `@.agents/GLOBAL_HINTS.md` in `CLAUDE.md` for Claude Code's `@import`
+syntax — and it never needs touching again; rule changes arrive through the normal re-sync + pin bump.
+(Harnesses without an import mechanism need a different wiring — e.g. sync rewriting a marked block in the
+agent file directly — not yet implemented here.)
+
+This field is deliberately rare: it costs every consumer real context on every turn, so it's reserved for
+genuine default-posture rules, not a dumping ground for every skill's summary. See **propose-skill** for the
+bar a skill has to clear to carry one.
 
 ## Contributing a skill (propose → review)
 

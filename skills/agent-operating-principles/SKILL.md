@@ -1,13 +1,13 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, when deciding whether code needs tests, and when a spike turns out to matter. Five project-agnostic habits for coding agents — research existing open source before building (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); and test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5). The host repo names its own research/troubleshooting doc locations.
+description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, when deciding whether code needs tests, when a spike turns out to matter, and before committing to a design during planning. Six project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); and prefer designing out issues by construction over defending against them at runtime (§6). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Agent operating principles
 
-Project-agnostic working discipline for coding agents. Five habits that pay for themselves repeatedly;
+Project-agnostic working discipline for coding agents. Six habits that pay for themselves repeatedly;
 **load the relevant section for the moment you're in:**
 - **§1 Research before you build** — when a new component/feature/capability is needed.
 - **§2 Reach for Bun** — when you need a JS/TS package manager, script runner, or test runner.
@@ -15,6 +15,8 @@ Project-agnostic working discipline for coding agents. Five habits that pay for 
 - **§4 Record what you learned** — after any gotcha that cost real debugging time.
 - **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep (and
   commit the spike itself, out of scratch, once it's load-bearing evidence).
+- **§6 Design out issues by construction** — when choosing between designs during planning, before you
+  commit to one.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
@@ -25,7 +27,10 @@ Project-agnostic working discipline for coding agents. Five habits that pay for 
 ## 1. Research existing open source before building anything new
 
 When a new component, feature, or capability is needed — anything non-trivial not already in the repo —
-**research what already exists in the open-source ecosystem first.** Two acceptable outcomes:
+**research what already exists in the open-source ecosystem first.** This applies with extra weight to new
+architecture and load-bearing components: the harder something is to reverse once other code depends on it,
+the more a prior-art survey — open-source precedent, existing patterns already in this codebase, published
+designs for the problem — pays for itself before you commit. Two acceptable outcomes:
 
 - **Adopt:** reuse a library/module/component that fits.
 - **Learn:** if nothing fits well enough to adopt, study how others solved it — architecture, accessibility,
@@ -40,6 +45,16 @@ none fit.
 > Prior-art research is read-heavy, parallelizable, and easy to verify against sources — a prime candidate to
 > **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
 > through an `independent-expert-review` panel before you commit to a build.
+
+**Example: pre-indexed code search for large codebases.** Past a certain scale, sequential grep/read
+exploration becomes the bottleneck a research pass should catch — a rough marker is **~50k+ LOC, or a
+monorepo where agent-driven exploration is already doing many read passes per task.** Pre-indexed code-graph
+search tools (e.g. CodeGraph — CLI only: `npm i -g @colbymchenry/codegraph`, then `codegraph init` and
+`codegraph explore` / `query` / `node` / `callers` / `callees` / `impact` / `files` from the shell) are worth
+evaluating at that point. Use the CLI surface only — don't wire it as an always-on MCP server; a CLI
+invocation is bounded like any other shell tool call, a standing server is a different trust commitment. As
+with any adopted tool, confirm current license and maintenance health before adopting (this section's own
+bar, above).
 
 ## 2. Default web-dev toolchain — reach for Bun
 
@@ -129,3 +144,29 @@ Scratch is wiped without notice and never reviewed — anything left there is go
 is gone is just an assertion. The test is *dependence, not size*: if a decision, a doc, or a future agent
 would have to re-derive it, it belongs in git. When in doubt, commit it — an unused committed file costs a
 few diff lines; a lost one costs the whole investigation.
+
+## 6. Prefer designing out issues by construction over defending against them
+
+When choosing between two designs during planning, prefer the one that makes a failure mode
+**structurally impossible** over the one that adds a check for it after the fact — encode an invariant in
+a type/schema rather than a runtime assert, remove a race by construction (single writer, clear ownership)
+rather than add a lock around it, make an illegal state unrepresentable rather than validate against it.
+This is a planning-phase bias: reach for elimination before defense, and reserve runtime checks for
+boundaries where elimination genuinely isn't possible (real external input, a third-party API).
+
+**The deconstruction challenge — find the right layer for the fix.** Don't settle for the first layer
+where the problem is visible. Deconstruct it one level of abstraction up — toward the more general
+condition the symptom is an instance of — and ask whether it's better solved there instead: does moving up
+remove more of the failure mode, or make the fix simpler? Repeat until moving up stops simplifying things.
+That layer, where the construction can't be pushed any further without losing what makes it a construction,
+is where the fix belongs — not necessarily where the symptom first appeared.
+
+**The elegance test — tell real elimination from a guard in disguise.** A genuine by-construction fix
+removes more complexity than it adds while preserving the same desirable properties. If a "construction"
+fix nets *more* code, more state, or a new invariant to maintain, it isn't elimination — it's a guard
+wearing construction's clothing, and it deserves the same scrutiny as any other defensive check.
+
+**Landing an invariant means sweeping for it.** When a change eliminates a failure mode by construction,
+check whether the same failure mode exists elsewhere in the codebase and would benefit from the same fix.
+A construction-based fix that isn't retroactively swept is only half-landed — the old guard-based instances
+stay in place, still needing defense, still able to drift from the new invariant.

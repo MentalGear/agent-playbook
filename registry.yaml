@@ -8,8 +8,8 @@ skills:
     sha256: b4139c124c005d4bcfbb2f4b8e4482a2ead720f6597ead185a8fe6ebdd9e187f
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 1.2.0
-    sha256: 261142ab79104c20f27ec0d2075e9085d8405ea5c03c64b8d0c0a614afce4b24
+    version: 1.3.0
+    sha256: 1f9c2483ce8e91931273184841346734bd2888260f5c2fc0b2534c49bf0e2e89
   agent-repo-layout:
     version: 1.2.0
     sha256: 83afec19c1a448b0e7c0b79f3b222ae61725733b884fadbc9c70d97539657e85
@@ -25,16 +25,16 @@ skills:
     version: 1.0.0
     sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
   propose-skill:
-    version: 1.0.0
-    sha256: 8dd88a9477f62ae6b9a985293865cd600a76da46324545f32f46ebe8216f8249
+    version: 1.1.0
+    sha256: c8b8d1b71760a4de0854ad80325ce2d8e6d58ed2e2c9fadd61113b360a2e8b60
     requires: [review-skill-proposal]
   review-skill-proposal:
-    version: 1.0.0
-    sha256: ee5d2a69962ada94553521efdb365c99ec0ec22bdd92e851c7a3f055f9214828
+    version: 1.1.0
+    sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
   stuck-on-a-problem:
     version: 1.0.0
     sha256: 3bcb9edd24c2c573b26b6dc48677c37c81927fd251168e4408a113cd8b048bfe
   subagent-framework:
-    version: 1.0.0
-    sha256: d97ac62fe67fa2a897d9df156d6641223a9159659a8e5c4bf009d48abe5f110e
+    version: 1.1.0
+    sha256: 188c1d9c936cc3b0968ec7749c46c503b21ab774bbaade50a224c5f5f8962537
     requires: [project-gates, agent-access]
