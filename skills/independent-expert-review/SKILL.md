@@ -3,7 +3,7 @@ name: independent-expert-review
 description: Use when you need a neutral, multi-perspective review of a change, design doc, or artifact — convene a panel of independent expert subagents (one per discipline), each blind to the conclusion you want, collect findings on a fixed severity schema, then synthesize and verify every finding against the code in the main loop. Load before reviewing a non-trivial diff, a new component/API, an architecture decision, or anything you want a second (third, fourth) opinion on. Covers panel sizing, the neutral-reviewer contract, the finding schema, adversarial verification, and why agreement is a severity tiebreaker — not a validity signal.
 user-invocable: false
 default-access: read-only   # the review panel it spawns is read-only (see the agent-access skill)
-version: 1.0.0
+version: 1.1.0
 requires: [project-gates, agent-access]
 ---
 
@@ -73,6 +73,12 @@ Run the reviewers **in parallel** (one batch, background). Cap concurrency (a ha
 5. **Assign final severity and sequence.** **Multi-mention (≥2 disciplines flag the same thing) is a
    severity tiebreaker, NOT a validity signal** — same model family reading the same artifact shares blind
    spots, so agreement can amplify a shared bias. Validity comes from reading the code, not the vote count.
+6. **Ask "is this truly the most unified solution?"** — as a standing question on the design the review is
+   converging toward, not just on the findings. It's the cheapest question in the process and the one that
+   most often reshapes a design rather than patching it (the **solve-by-construction** skill is where that
+   reshaping happens). **State provenance when a correction lands:** record which finding or challenge
+   changed the design, so the record shows what the panel actually bought — a review whose influence isn't
+   traceable can't be evaluated later.
 
 ## 5. Cost & persistence
 - **Synthesis isn't free.** The de-dup + per-finding verification you must do *after* the panel returns

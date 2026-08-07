@@ -8,17 +8,17 @@ skills:
     sha256: b4139c124c005d4bcfbb2f4b8e4482a2ead720f6597ead185a8fe6ebdd9e187f
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 1.3.0
-    sha256: 1f9c2483ce8e91931273184841346734bd2888260f5c2fc0b2534c49bf0e2e89
+    version: 2.0.0
+    sha256: df5364eb9bb9f1ffe5b1703f96bc4767beac42c68737cc8ad23ff517072ef66f
   agent-repo-layout:
-    version: 1.2.0
-    sha256: 83afec19c1a448b0e7c0b79f3b222ae61725733b884fadbc9c70d97539657e85
+    version: 1.3.0
+    sha256: 042201ba5701e5a2e7384b4b01f666b6d42108ee6ac85cb7c34c41397e6b3aeb
   end-of-round-report:
     version: 1.0.0
     sha256: 7e4091803f7899375a5c78ecbf68138c3a9e1d124340c5786eb9b7201d99f093
   independent-expert-review:
-    version: 1.0.0
-    sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62
+    version: 1.1.0
+    sha256: f4966094adc1efbfac523521674d599fb66250fc8cc3db55aec23ecc6e5402e0
     requires: [project-gates, agent-access]
     default-access: "read-only"
   project-gates:
@@ -31,10 +31,16 @@ skills:
   review-skill-proposal:
     version: 1.1.0
     sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
-  stuck-on-a-problem:
+  solve-by-construction:
     version: 1.0.0
-    sha256: 3bcb9edd24c2c573b26b6dc48677c37c81927fd251168e4408a113cd8b048bfe
-  subagent-framework:
+    sha256: 6fecd5949f029ef925eac90636e32766ed257f6b613cbb3892eb9e2ff7f1eb04
+  stuck-on-a-problem:
     version: 1.1.0
-    sha256: 188c1d9c936cc3b0968ec7749c46c503b21ab774bbaade50a224c5f5f8962537
+    sha256: e9a742785093e73a0d138d7c4cfdcf8ccb4f5427ba5696db110b61366d5e01e7
+  subagent-framework:
+    version: 1.2.0
+    sha256: e7e0a4c6e388bb985d3ddce0d8b2e8bb27d5e67339556e2ae1bcf39e77cb78d4
     requires: [project-gates, agent-access]
+  verification-instruments:
+    version: 1.0.0
+    sha256: 5c06a9eb1a108834a05e8b5b7ff80f467e825a716016b12c2cf1e67da5fc0131

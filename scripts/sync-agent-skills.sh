@@ -29,7 +29,7 @@ set -euo pipefail
 require_tools git jq
 
 PLAYBOOK_REPO="${AGENT_PLAYBOOK_REPO:-https://github.com/MentalGear/agent-playbook.git}"
-SKILLS=(subagent-framework agent-operating-principles independent-expert-review project-gates agent-repo-layout agent-access)
+SKILLS=(subagent-framework agent-operating-principles solve-by-construction verification-instruments stuck-on-a-problem independent-expert-review project-gates agent-repo-layout agent-access)
 # Skills vendored under .agents/skills/ from a DIFFERENT upstream — not synced here and exempt from
 # pruning. IMPORTANT: external skills are OUTSIDE this gate's integrity perimeter — re-sync never
 # touches them, so a malicious edit to their CONTENT is NOT caught by the `git status` CI gate (only
@@ -217,6 +217,9 @@ if [ "${#hint_entries[@]}" -gt 0 ]; then
     echo "<!-- frontmatter — do not edit by hand. Vendored from $PLAYBOOK_REPO @ $resolved_sha. -->"
     echo
     echo "# Global agent hints"
+    echo
+    echo "Operational imperatives only — each points at the skill that owns its full reasoning."
+    echo "When a hint and its source skill disagree, **the skill wins and this line is stale**."
     echo
     for e in "${hint_entries[@]}"; do
       IFS=$'\x1f' read -r sk hint <<<"$e"

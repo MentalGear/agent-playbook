@@ -12,9 +12,19 @@ skills/
     SKILL.md                            # delegate to subagents & keep the judgment: when to delegate,
                                         #   the task contract, roles, orchestration patterns, guardrails
     reference.md                        #   reference detail: the eval scorecard, two-tier logging, tooling
-  agent-operating-principles/SKILL.md   # research-first · the troubleshooting playbook ·
+  agent-operating-principles/SKILL.md   # research-first (3 reuse questions, boundary triggers) ·
+                                        #   the troubleshooting playbook ·
                                         #   keep-the-troubleshooting-doc-current discipline ·
-                                        #   test real code, commit load-bearing spikes as evidence
+                                        #   test real code, commit load-bearing spikes as evidence ·
+                                        #   pre-commit decision criteria, negatives as first-class
+  solve-by-construction/SKILL.md        # eliminate the failure mode instead of guarding it: the rung
+                                        #   ladder (site → boundary → existing checkpoint →
+                                        #   unrepresentable), the deconstruction exercise, the elegance
+                                        #   test, re-run on the plan, sweep once an invariant lands
+  verification-instruments/SKILL.md     # keeping evidence honest: probe before filing · formalise as
+                                        #   the cheapest oracle · shared conventions defeat equivalence
+                                        #   testing (foreign vectors) · mutation-check the fix in an
+                                        #   isolated worktree · benchmarks as committed instruments
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that

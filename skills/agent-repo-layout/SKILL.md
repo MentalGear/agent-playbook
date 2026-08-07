@@ -1,8 +1,9 @@
 ---
 name: agent-repo-layout
-description: Use when setting up a repo for agents, when unsure where an agent-facing artifact belongs or whether you may write to a path, or when deciding whether work can stay in gitignored scratch. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log), the rule that scratch holds only genuinely throwaway work while load-bearing spikes get committed as evidence, and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, plus the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
+description: Use when setting up a repo for agents, when unsure where an agent-facing artifact belongs or whether you may write to a path, when deciding whether work can stay in gitignored scratch, and before restating guidance that already exists somewhere else. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log), the rule that scratch holds only genuinely throwaway work while load-bearing spikes get committed as evidence, the pointers-not-copies rule that gives every piece of reasoning exactly one owning document, and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, plus the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
-version: 1.2.0
+version: 1.3.0
+global_agent_file_hint: Pointers, not copies — one document owns each piece of reasoning; everything else links to it. When a pointer and its source disagree, the source wins and the pointer is stale. See agent-repo-layout.
 ---
 
 # Agent repo layout — where things live, and what may write where
@@ -78,6 +79,23 @@ paths:
    `write` → free; `scoped` → only within the delegation's `agent-access` scope; `approval` → show the diff
    and get a human yes first (the contract files).
 3. **Never hand-edit `.agents/skills/**`** — it's sync-managed and carries a "do not edit here" header.
+
+## Pointers, not copies — one document owns each idea
+
+**Every piece of reasoning has exactly one owning document; everything else links to it.** When a rule,
+rationale, or decision is restated in a second place, the two drift — and the copy goes stale *silently*,
+because nothing fails when it does. The reader who lands on the stale copy has no way to tell.
+
+- **Writing something already written?** Link to the owner instead. If the existing text isn't good enough
+  to link to, improve it *there* — don't fork a better version somewhere else.
+- **Need a short operational form** (a checklist line, an always-loaded rule, an index entry)? That's fine —
+  keep it to an imperative plus a pointer, never a summary that can disagree with the source.
+- **State the precedence explicitly:** when a pointer and its source disagree, **the source wins and the
+  pointer is stale.** Say so in files that carry pointers, so a reader knows which one to trust.
+
+This is why the layout above gives each artifact type exactly one home — a finding lives in `docs/debug/`,
+a decision in `docs/research/` — and why the generated always-loaded hints file (see the hub README's
+"Global agent hints") carries imperatives with skill pointers rather than restating the skills.
 
 ## Ship a working devcontainer
 **An agent-ready repo boots clone-to-ready.** Ship a `devcontainer.json` so a fresh clone reaches a

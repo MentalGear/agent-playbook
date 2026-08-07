@@ -2,9 +2,9 @@
 name: subagent-framework
 description: Use before building anything — implementation is delegated to subagents by default, not written in the main loop. This skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 requires: [project-gates, agent-access]
-global_agent_file_hint: Don't build in the main loop — delegate implementation to subagents by default. Exceptions: small changes (<~15 min / <~100 lines) and delegation that has repeatedly failed. See the subagent-framework skill, §1a/§1b.
+global_agent_file_hint: Don't build in the main loop — delegate implementation to subagents by default. Exceptions: small changes (<~15 min / <~100 lines) and delegation that has repeatedly failed (subagent-framework §1a/§1b). Delegated agents report worse-than-expected first; orchestrators spot-check load-bearing claims.
 ---
 
 # Subagent framework — delegate work, keep the judgment
@@ -105,7 +105,10 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    `.agents/access.yaml`; plus any explicit don't-touch.
 5. **Acceptance checks** — what "done" means (§3a).
 6. **Output format** — compact structured return; "your final message IS the deliverable." Fixed schema for
-   reviews.
+   reviews. **Report worse-than-expected first:** the return leads with what came out weaker than hoped,
+   what couldn't be verified, and where the agent is least confident — before the accomplishments. An agent
+   that falsifies its own draft is working correctly, not failing; a uniformly positive report is a smell,
+   not a success.
 7. **Budget/parallelism** — background? batch? worktree?
 8. **Step outline (the orchestrator's job).** For any non-trivial task, **design and hand over an ordered,
    numbered step plan** — not just a goal. The orchestrator owns the decomposition and the hard design calls
@@ -146,6 +149,11 @@ Gates are **declared in the host's gate manifest** — see the **project-gates**
 ## 5. Verify before it lands
 **Gate (binary, observed by the main loop):** the §3a checks for what the task touched. No gate pass → not
 done, regardless of how good it looks or what the agent claims. **Read the diff** before committing.
+
+**Spot-check the load-bearing claims, not a uniform sample.** Identify the handful of claims the
+conclusion actually rests on — the measurement a decision hangs on, the "I verified X" behind a green
+result — and check those yourself against the source or the tool output. Sampling evenly spends the same
+effort confirming claims that wouldn't change anything if wrong.
 
 For substantial or first-of-its-type delegations, score the result and log it — the **scorecard rubric,
 two-tier logging, and rotation** live in **reference.md**.
