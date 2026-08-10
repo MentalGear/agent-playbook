@@ -88,19 +88,35 @@ validate "$h" a
 { [ "$RC" -ne 0 ] && grep -qi "build-registry.sh failed" <<<"$OUT"; } && ok "stale-check fails when build-registry errors" || no "build-registry failure should fail freshness (rc=$RC): $OUT"
 rm -rf "$h"
 
-# 8) global_agent_file_hint: absent is fine; within budget passes; over budget REJECTS
-h="$(newhub)"; mkskill "$h" nohint "name: nohint" "description: $LONGDESC" "version: 1.0.0"
-mkskill "$h" hinted "name: hinted" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: Short default rule. See hinted skill."
+# 8) agent-rules.md: absent is fine; well-formed passes; over budget and bad shape REJECT
+h="$(newhub)"; mkskill "$h" norules "name: norules" "description: $LONGDESC" "version: 1.0.0"
+mkskill "$h" ruled "name: ruled" "description: $LONGDESC" "version: 1.0.0"
+printf '**When something happens** -> `ruled`\n- Do the thing.\n' > "$h/skills/ruled/agent-rules.md"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" nohint
-[ "$RC" -eq 0 ] && ok "no global_agent_file_hint is fine (optional field)" || no "absent hint should pass (rc=$RC): $OUT"
-validate "$h" hinted
-[ "$RC" -eq 0 ] && ok "in-budget global_agent_file_hint passes" || no "short hint should pass (rc=$RC): $OUT"
-long="$(printf 'x%.0s' $(seq 1 410))"
-mkskill "$h" oversized "name: oversized" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: $long"
+validate "$h" norules
+[ "$RC" -eq 0 ] && ok "no agent-rules.md is fine (optional file)" || no "absent agent-rules should pass (rc=$RC): $OUT"
+validate "$h" ruled
+[ "$RC" -eq 0 ] && ok "well-formed agent-rules.md passes" || no "good agent-rules should pass (rc=$RC): $OUT"
+
+# over budget
+mkskill "$h" fat "name: fat" "description: $LONGDESC" "version: 1.0.0"
+{ printf '**When too much is said** -> `fat`\n'; printf -- '- %s\n' $(printf 'padpadpadpadpad%.0s ' $(seq 1 120)); } > "$h/skills/fat/agent-rules.md"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" oversized
-{ [ "$RC" -ne 0 ] && grep -qi "global_agent_file_hint is" <<<"$OUT"; } && ok "over-budget global_agent_file_hint REJECTS" || no "oversized hint should reject (rc=$RC): $OUT"
+validate "$h" fat
+{ [ "$RC" -ne 0 ] && grep -qi "agent-rules.md is" <<<"$OUT"; } && ok "over-budget agent-rules.md REJECTS" || no "oversized agent-rules should reject (rc=$RC): $OUT"
+
+# missing the trigger-first opening line
+mkskill "$h" shapeless "name: shapeless" "description: $LONGDESC" "version: 1.0.0"
+printf -- '- just a bullet, no trigger line\n' > "$h/skills/shapeless/agent-rules.md"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+validate "$h" shapeless
+{ [ "$RC" -ne 0 ] && grep -qi "trigger line" <<<"$OUT"; } && ok "agent-rules.md without a '**When …**' opener REJECTS" || no "shapeless agent-rules should reject (rc=$RC): $OUT"
+
+# the superseded frontmatter field is now an explicit failure, not silently ignored
+mkskill "$h" legacy "name: legacy" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: an old-style one-liner"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+validate "$h" legacy
+{ [ "$RC" -ne 0 ] && grep -qi "no longer supported" <<<"$OUT"; } && ok "legacy global_agent_file_hint REJECTS with a migration hint" || no "legacy field should reject (rc=$RC): $OUT"
 rm -rf "$h"
 
 echo "---"

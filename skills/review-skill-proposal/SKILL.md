@@ -2,7 +2,7 @@
 name: review-skill-proposal
 description: Use when reviewing a skill proposed to this hub (a PR adding or updating skills/<name>/) before accepting it. The receiver-side validation contract — run scripts/validate-skill.sh and confirm the structural checks (frontmatter schema, version bump, requires resolve, declared access within the allowed vocabulary, registry freshness) plus the human checks (genuinely general, not duplicative, safe). The counterpart to propose-skill.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Review a skill proposal — validating before it lands
@@ -31,7 +31,8 @@ It **rejects** (non-zero) on any of:
 - `requires:` naming a skill that doesn't exist here, or a block-style (non-inline) `requires` list;
 - `default-access`/`isolation` outside the known vocabulary (a base scope + optional `network:on|off`);
 - `registry.yaml` stale or missing this skill's content hash;
-- `global_agent_file_hint` over the 400-char budget (it lands in every consumer's always-loaded context).
+- `agent-rules.md` over its 1200-byte budget, or missing the opening `**When …**` trigger line (that file
+  lands in every consumer's always-loaded context, so it is budgeted and shape-checked).
 
 It also **hard-fails a `write` `default-access` by default** — a contributed skill must not silently grant
 itself write. A maintainer who has reviewed it re-runs with `ALLOW_WRITE_DEFAULT=1` to permit it (then it
@@ -49,11 +50,11 @@ The script proves the shape; **you** decide the substance:
 4. **Safe?** No instruction to exfiltrate, escalate access, disable gates, or evade review. A write-scope
    default is justified and minimal.
 5. **Version honest?** A behaviour change carries a real `version` bump; the PR says what changed.
-6. **`global_agent_file_hint` actually warranted?** The validator only checks length, not whether the skill
-   deserves one — that's a judgment call. It's earned by a **default posture** (a rule that should hold
-   before the agent even thinks to look for a skill about it), not by "this skill feels important." Reject
+6. **`agent-rules.md` actually warranted?** The validator checks size and shape, not whether the skill
+   deserves an always-loaded block — that's a judgment call. It's earned by a rule that must be visible
+   **before** the agent would think to load a skill about it, not by "this skill feels important." Reject
    or ask for removal if a submission adds one for reference material that already has good `description`
-   triggering.
+   triggering, and push back on any block that summarizes its skill instead of pointing at it.
 
 ## On accept
 Merge; the regenerated `registry.yaml` publishes the new version. Downstream consumers pick it up via their

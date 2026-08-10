@@ -3,7 +3,6 @@ name: verification-instruments
 description: Use before recording a defect claim, before trusting a passing test suite, when checking that a fix is actually guarded, and when deciding whether to build a benchmark. The discipline that keeps evidence honest — reproduce a defect against the real system before filing it; formalise the intended semantics as the cheapest oracle; distrust agreement between two forms that share a convention (use foreign vectors); mutation-check the fix rather than the function, in an isolated worktree; and treat benchmarks as committed instruments built when a question hangs on the number. Project-agnostic.
 user-invocable: false
 version: 1.0.0
-global_agent_file_hint: Reproduce a defect against the real system before recording it. Two implementations agreeing proves nothing when they share a convention — use foreign vectors. Mutation-check the fix, not the function, and run hand-applied mutations in an isolated worktree, never the main tree. See verification-instruments.
 ---
 
 # Verification instruments — keeping the evidence honest

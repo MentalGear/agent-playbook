@@ -8,14 +8,14 @@ skills:
     sha256: b4139c124c005d4bcfbb2f4b8e4482a2ead720f6597ead185a8fe6ebdd9e187f
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 2.0.0
-    sha256: df5364eb9bb9f1ffe5b1703f96bc4767beac42c68737cc8ad23ff517072ef66f
+    version: 2.1.0
+    sha256: b488bcf283b366dbd3b53fe3c8a489c7dcf88e0ed2e86824e05b72c3ce8d50f0
   agent-repo-layout:
     version: 1.3.0
-    sha256: 042201ba5701e5a2e7384b4b01f666b6d42108ee6ac85cb7c34c41397e6b3aeb
+    sha256: 6e13e213af36ffb77b0fe99e28a9824979b22d2707a2837120e90452c7fd82a7
   end-of-round-report:
-    version: 1.0.0
-    sha256: 7e4091803f7899375a5c78ecbf68138c3a9e1d124340c5786eb9b7201d99f093
+    version: 1.1.0
+    sha256: b46b9f1f05e910999a5f1875392d3b8bb4fe3b7038f130d8587ebb937e981332
   independent-expert-review:
     version: 1.1.0
     sha256: f4966094adc1efbfac523521674d599fb66250fc8cc3db55aec23ecc6e5402e0
@@ -25,22 +25,26 @@ skills:
     version: 1.0.0
     sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
   propose-skill:
-    version: 1.1.0
-    sha256: c8b8d1b71760a4de0854ad80325ce2d8e6d58ed2e2c9fadd61113b360a2e8b60
+    version: 1.2.0
+    sha256: 1a26bf13d6cf241c8d2efeb756e964337d1e99b01277b9f719c03a1301d5d34e
     requires: [review-skill-proposal]
   review-skill-proposal:
-    version: 1.1.0
-    sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
+    version: 1.2.0
+    sha256: 3b1f899933ea9888aaac14020c775efb95b974cae26aceed7ae432d5f60ab141
+  salvage-subagent-transcript:
+    version: 1.0.0
+    sha256: 52443aa241f6962cafeafada5ffbd23bbf4d08df11e88d5d7ae837680ae853bc
+    requires: [subagent-framework]
   solve-by-construction:
     version: 1.0.0
-    sha256: 6fecd5949f029ef925eac90636e32766ed257f6b613cbb3892eb9e2ff7f1eb04
+    sha256: f80d52b2cfbffbcf760f42329cf295b77c7868118c34f4a73d803ecd39815e03
   stuck-on-a-problem:
     version: 1.1.0
-    sha256: e9a742785093e73a0d138d7c4cfdcf8ccb4f5427ba5696db110b61366d5e01e7
+    sha256: 3bef2de093b72aa5d4579bc790fcf55ebb1ea89eb77e2d334f90c1d91cc535e2
   subagent-framework:
-    version: 1.2.0
-    sha256: e7e0a4c6e388bb985d3ddce0d8b2e8bb27d5e67339556e2ae1bcf39e77cb78d4
+    version: 1.3.0
+    sha256: d4051a2a20856ef829cec52294398b2c7a23af72a61f6a6707e2c89283b29973
     requires: [project-gates, agent-access]
   verification-instruments:
     version: 1.0.0
-    sha256: 5c06a9eb1a108834a05e8b5b7ff80f467e825a716016b12c2cf1e67da5fc0131
+    sha256: eb5bf1621b3a9a526262f0ca215e57dfa14e902c07c01dfaefecaa738fe4729b

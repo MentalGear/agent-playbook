@@ -80,13 +80,21 @@ validate_one() {
   local iso; iso="$(fm_scalar "$fm" isolation)"
   [ -n "$iso" ] && { [[ "$iso" =~ ^(inline|subagent)$ ]] || fail "$name: isolation '$iso' must be inline|subagent"; }
 
-  # global_agent_file_hint is optional and rare on purpose: it lands in every consumer's ALWAYS-LOADED
-  # context (via sync's generated .agents/GLOBAL_HINTS.md), unlike `description` which only loads on
-  # demand. Budget it hard — a stated default + its exception(s) + a pointer back to the skill, not prose.
-  local hint; hint="$(fm_field "$fm" global_agent_file_hint)"
-  if [ -n "$hint" ]; then
-    [ "${#hint}" -le 400 ] || fail "$name: global_agent_file_hint is ${#hint} chars (max 400, ~2 short lines) — it loads into every consumer's always-loaded context on every turn, keep it tight"
+  # agent-rules.md is optional and rare on purpose: it lands in every consumer's ALWAYS-LOADED context
+  # (via sync's generated .agents/AGENT_RULES.md), unlike SKILL.md which only loads on demand. Budget it
+  # hard, and require the trigger-first shape so the assembled file stays an index, not an essay.
+  local rules="skills/$name/agent-rules.md"
+  if [ -f "$rules" ]; then
+    local bytes; bytes="$(wc -c < "$rules" | tr -d ' ')"
+    [ "$bytes" -le 1200 ] || fail "$name: agent-rules.md is $bytes bytes (max 1200) — it loads into every consumer's always-loaded context on every turn; move detail into SKILL.md and leave a pointer"
+    head -1 "$rules" | grep -qE '^\*\*When .+\*\*' \
+      || fail "$name: agent-rules.md must open with a trigger line of the form '**When <situation>** → \`$name\`' so the assembled rules file stays indexed by trigger"
+    grep -q "$name" "$rules" \
+      || warn "$name: agent-rules.md doesn't name its own skill — readers can't find the owning skill for the detail"
   fi
+  # The predecessor mechanism (a one-line frontmatter hint) is gone; catch a skill still carrying it.
+  [ -n "$(fm_field "$fm" global_agent_file_hint)" ] \
+    && fail "$name: global_agent_file_hint is no longer supported — move it into skills/$name/agent-rules.md (trigger-first, see propose-skill)"
 
   # registry carries this skill with a matching whole-dir content hash
   local sha; sha="$(skill_dir_hash "skills/$name")"

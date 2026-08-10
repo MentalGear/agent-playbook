@@ -200,32 +200,43 @@ out="$(cd "$cons" && PLAYBOOK_REF="$head18" AGENT_PLAYBOOK_REPO="$hub18" bash sc
   || no "rollback fail-open expected WARN+proceed (rc=$rc): $out"
 rm -rf "$cons" "$hub18"
 
-# 19) global_agent_file_hint: a hinted skill produces .agents/GLOBAL_HINTS.md with its hint text; a
-#     skill with no hint contributes no line and (if it's the only vendored skill) no file at all.
+# 19) agent-rules.md: a skill shipping one contributes its block to .agents/AGENT_RULES.md; a skill
+#     without one contributes nothing (and alone, produces no file at all).
 hubh="$(mktemp -d)"; mkdir -p "$hubh/skills/foo" "$hubh/skills/bar"
-printf -- '---\nname: foo\nversion: 1.0.0\nglobal_agent_file_hint: Do the foo thing by default. See foo.\n---\n\n# foo\n' > "$hubh/skills/foo/SKILL.md"
+printf -- '---\nname: foo\nversion: 1.0.0\n---\n\n# foo\n' > "$hubh/skills/foo/SKILL.md"
+printf -- '**When foo happens** -> `foo`\n- Do the foo thing by default.\n' > "$hubh/skills/foo/agent-rules.md"
 printf -- '---\nname: bar\nversion: 2.0.0\n---\n\n# bar\n' > "$hubh/skills/bar/SKILL.md"
 ( cd "$hubh" && git init -q -b main && GI add -A && GI commit -qm init )
 cons="$(mkcons "foo bar")"
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-{ [ -f "$cons/.agents/GLOBAL_HINTS.md" ] && grep -q "Do the foo thing by default" "$cons/.agents/GLOBAL_HINTS.md" \
-    && ! grep -q '`bar`' "$cons/.agents/GLOBAL_HINTS.md"; } \
-  && ok "GLOBAL_HINTS.md carries the hinted skill's line, not the unhinted one" \
-  || no "GLOBAL_HINTS.md content wrong"
+{ [ -f "$cons/.agents/AGENT_RULES.md" ] && grep -q "Do the foo thing by default" "$cons/.agents/AGENT_RULES.md" \
+    && grep -q "When foo happens" "$cons/.agents/AGENT_RULES.md" \
+    && ! grep -q '`bar`' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "AGENT_RULES.md carries the ruled skill's trigger block, not the unruled one" \
+  || no "AGENT_RULES.md content wrong"
 rm -rf "$cons"
 
-cons="$(mkcons bar)"   # only the UNHINTED skill vendored -> no hints file at all
+cons="$(mkcons bar)"   # only the skill WITHOUT agent-rules.md -> no rules file at all
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && ok "no hinted skill vendored -> no GLOBAL_HINTS.md" || no "GLOBAL_HINTS.md should not exist"
+[ ! -e "$cons/.agents/AGENT_RULES.md" ] && ok "no ruled skill vendored -> no AGENT_RULES.md" || no "AGENT_RULES.md should not exist"
 rm -rf "$cons"
 
-# 20) dropping the hinted skill from SKILLS removes GLOBAL_HINTS.md on re-sync (mirrors skill-dir prune)
+# 20) dropping the ruled skill from SKILLS removes AGENT_RULES.md on re-sync (mirrors skill-dir prune)
 cons="$(mkcons "foo bar")"
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ -f "$cons/.agents/GLOBAL_HINTS.md" ] || no "setup: GLOBAL_HINTS.md should exist before drop"
+[ -f "$cons/.agents/AGENT_RULES.md" ] || no "setup: AGENT_RULES.md should exist before drop"
 sed -i 's/^SKILLS=(.*)$/SKILLS=(bar)/' "$cons/scripts/sync-agent-skills.sh"
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && ok "dropping the hinted skill removes GLOBAL_HINTS.md" || no "GLOBAL_HINTS.md should be removed after drop"
+[ ! -e "$cons/.agents/AGENT_RULES.md" ] && ok "dropping the ruled skill removes AGENT_RULES.md" || no "AGENT_RULES.md should be removed after drop"
+rm -rf "$cons"
+
+# 21) MIGRATION: a stale GLOBAL_HINTS.md (the superseded mechanism) is removed by re-sync, so a consumer
+#     still importing it can't keep loading rules nothing regenerates.
+cons="$(mkcons "foo bar")"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+echo "stale one-liner from the old mechanism" > "$cons/.agents/GLOBAL_HINTS.md"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+[ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && ok "re-sync removes a stale GLOBAL_HINTS.md (migration)" || no "stale GLOBAL_HINTS.md survived re-sync"
 rm -rf "$cons" "$hubh"
 
 rm -rf "$hub"

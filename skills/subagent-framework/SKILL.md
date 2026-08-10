@@ -2,9 +2,8 @@
 name: subagent-framework
 description: Use before building anything — implementation is delegated to subagents by default, not written in the main loop. This skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
 user-invocable: false
-version: 1.2.0
+version: 1.3.0
 requires: [project-gates, agent-access]
-global_agent_file_hint: Don't build in the main loop — delegate implementation to subagents by default. Exceptions: small changes (<~15 min / <~100 lines) and delegation that has repeatedly failed (subagent-framework §1a/§1b). Delegated agents report worse-than-expected first; orchestrators spot-check load-bearing claims.
 ---
 
 # Subagent framework — delegate work, keep the judgment
@@ -115,6 +114,16 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    (resolve ambiguous/idiomatic choices *before* delegating); the worker executes. A goal-only prompt makes
    the agent re-derive design under-context and drift. Outlining steps is also where you catch that a task
    should be split or kept.
+9. **Progress checkpoints — required for anything long-running or multi-step.** Have the agent emit a short
+   status at defined points (per completed step, or per milestone in the §8 outline): what's done, what's
+   in flight, what's blocked. Write it where you can read it *without interrupting the agent* — a log file,
+   a task update, a scratch note — not only in the final return.
+
+   Without checkpoints a long delegation is opaque until it ends, and the three states you most need to
+   distinguish — **working**, **stuck**, and **dead** — look identical from outside. Checkpoints are also
+   what make recovery possible when it dies mid-flight (see the **salvage-subagent-transcript** skill);
+   an agent with no progress trail leaves you nothing but its workspace diff to reconstruct from. Keep each
+   checkpoint short — a few lines, not a narration; the distilled-return rule (§0.5) applies here too.
 
 ### 3a. Which gates to run (the acceptance checks)
 Gates are **declared in the host's gate manifest** — see the **project-gates** skill for the schema
@@ -138,6 +147,9 @@ Gates are **declared in the host's gate manifest** — see the **project-gates**
 - **Adversarial verify** — a second agent (given **identical scope**) tries to *refute* a finding; a
   refutation without a cited counter-reason is invalid. **Default on for BLOCKER/MAJOR and any
   security/invariant surface; off for MINOR/NIT.**
+- **Salvage** — when an agent goes stale, crashes, or returns something unusable, recover before you
+  relaunch: its workspace diff and transcript usually hold most of the work. See the
+  **salvage-subagent-transcript** skill; never spawn a fresh agent over a half-finished one.
 - **Repair loop** — feed the failing gate output back to the **same** agent. **Resume, don't restart:**
   relaunch that agent from its transcript (a "continue this agent" message), never spawn a fresh one — a
   fresh agent discards the partial progress and may clobber its half-finished work on disk. "Unproductive" =

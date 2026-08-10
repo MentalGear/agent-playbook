@@ -3,7 +3,6 @@ name: agent-repo-layout
 description: Use when setting up a repo for agents, when unsure where an agent-facing artifact belongs or whether you may write to a path, when deciding whether work can stay in gitignored scratch, and before restating guidance that already exists somewhere else. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log), the rule that scratch holds only genuinely throwaway work while load-bearing spikes get committed as evidence, the pointers-not-copies rule that gives every piece of reasoning exactly one owning document, and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, plus the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
 version: 1.3.0
-global_agent_file_hint: Pointers, not copies — one document owns each piece of reasoning; everything else links to it. When a pointer and its source disagree, the source wins and the pointer is stale. See agent-repo-layout.
 ---
 
 # Agent repo layout — where things live, and what may write where

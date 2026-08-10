@@ -3,7 +3,6 @@ name: solve-by-construction
 description: Use when choosing between designs during planning, when deciding where a fix belongs, and before landing any guard, check, or assertion. Prefer designs that make a failure mode structurally impossible over designs that defend against it at runtime — climb the ladder (guard at the site → validate at a boundary → route through an existing checkpoint → make it unrepresentable) instead of patching where the defect surfaced; run the deconstruction exercise to test whether the current form is the truest one; apply the elegance test to tell real elimination from a guard in disguise; re-run the whole check on the plan before building; and sweep existing code once an invariant lands. Project-agnostic.
 user-invocable: false
 version: 1.0.0
-global_agent_file_hint: Before landing a guard at the defect site, climb the ladder — boundary check, existing checkpoint, or make the failure unrepresentable. A fix must remove more complexity than it adds while keeping the same desirable properties; re-run that check on the plan before building. See solve-by-construction.
 ---
 
 # Solve by construction — eliminate the failure mode, don't defend against it

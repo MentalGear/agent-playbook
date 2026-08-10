@@ -10,8 +10,12 @@ only its project-specific rules and concrete gate values.
 skills/
   subagent-framework/
     SKILL.md                            # delegate to subagents & keep the judgment: when to delegate,
-                                        #   the task contract, roles, orchestration patterns, guardrails
+                                        #   the task contract (incl. progress checkpoints), roles,
+                                        #   orchestration patterns, guardrails
     reference.md                        #   reference detail: the eval scorecard, two-tier logging, tooling
+    agent-rules.md                      #   always-loaded block (see "Agent rules")
+  salvage-subagent-transcript/SKILL.md  # a subagent went stale/crashed/returned junk: harvest the
+                                        #   workspace diff + transcript, then resume / harvest / discard
   agent-operating-principles/SKILL.md   # research-first (3 reuse questions, boundary triggers) ·
                                         #   the troubleshooting playbook ·
                                         #   keep-the-troubleshooting-doc-current discipline ·
@@ -37,8 +41,10 @@ skills/
   propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
   review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
-  stuck-on-a-problem/SKILL.md           # recognize repeated same-class fixes as a local-minimum signal;
-                                        #   step up a level of abstraction instead of patching again
+  stuck-on-a-problem/SKILL.md           # on the SECOND instance of a defect shape, enumerate the class,
+                                        #   fix all, guard it; step up a level instead of patching again
+  <skill>/agent-rules.md                # optional per-skill always-loaded block, assembled by sync into
+                                        #   .agents/AGENT_RULES.md (see "Agent rules" below)
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
@@ -53,13 +59,15 @@ VERSION                                 # the human-facing release ref (consumer
 
 The skills interlock: **subagent-framework** is the delegation contract, **independent-expert-review** is the
 review-panel pattern it references, **project-gates** is the shared gate-manifest schema both of them point
-at, **agent-repo-layout** is the standard repo structure + permission map, **agent-access** is the
-scope/isolation vocabulary delegations declare (resolving against that map), and **agent-operating-principles**
-is the cross-cutting working discipline. A skill folder may carry
+at, **salvage-subagent-transcript** is what you reach for when a delegation dies, **agent-repo-layout** is the
+standard repo structure + permission map, **agent-access** is the scope/isolation vocabulary delegations
+declare (resolving against that map), **solve-by-construction** and **verification-instruments** are the
+fix-it-at-the-right-layer and prove-it-actually-holds halves of landing a change, and
+**agent-operating-principles** is the cross-cutting working discipline. A skill folder may carry
 extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`), so vendor the **whole skill
 directory**, not just the entry file.
 
-All six skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
+All skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
 docs live), and the **consuming repo supplies the values** — its gates in a `project-gates` manifest, the
 rest typically in its `CLAUDE.md`. Get that seam right and a skill drops into a non-Svelte, non-JS repo with
 only its slot values changed (the gate categories are an open list — UI a11y/visual-regression are
@@ -85,9 +93,9 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    in the diff. Re-run with no args to stay at the locked pin; `PLAYBOOK_REF=<new-sha>` to bump it.
 3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
    into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
-   writes the lockfile (pin + per-skill version), and (re)generates **`.agents/GLOBAL_HINTS.md`** from the
-   `global_agent_file_hint` frontmatter of whichever vendored skills declare one (most don't — see
-   [Global agent hints](#global-agent-hints) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
+   writes the lockfile (pin + per-skill version), and (re)generates **`.agents/AGENT_RULES.md`** by
+   concatenating the `agent-rules.md` of whichever vendored skills ship one (most don't — see
+   [Agent rules](#agent-rules) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
    is deterministic, so CI runs `scripts/sync-agent-skills.sh && git status --porcelain -- .agents .claude`
    (`git status --porcelain`, not `git diff --exit-code`, so an untracked orphaned skill dir is caught too) —
    any hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces drift and fails the build.
@@ -97,14 +105,14 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    your gates; see [`skills/project-gates/SKILL.md`](skills/project-gates/SKILL.md) for a filled example.
 5. **Wire it into your `CLAUDE.md`**: replace the general guidance with thin skill-pointers that defer to the
    manifest, plus **one static import line** for the generated hints file (see below). Generic form:
-   > *@.agents/GLOBAL_HINTS.md*
+   > *@.agents/AGENT_RULES.md*
    >
    > *Delegate per the `subagent-framework` skill; this project's gates are declared in `.agents/gates.yaml`
    > (`project-gates`). Log each delegation in `<log path>`. For review panels use the
    > `independent-expert-review` skill; persist rounds in `<research dir>`.*
 
    Concrete example (the Svelte/SvelteKit repo this was extracted from):
-   > *@.agents/GLOBAL_HINTS.md*
+   > *@.agents/AGENT_RULES.md*
    >
    > *Delegate per the **`subagent-framework`** skill. **This project's gates** live in
    > `.agents/gates.yaml` (per **`project-gates`**) — always `bun run check` + `bun run lint`; logic
@@ -112,32 +120,40 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
 
-### Global agent hints
+### Agent rules
 
 Most skills are **load-on-demand** — the right fit for reference material you consult *when* a matching
-situation comes up. A few encode a **default posture** instead — a rule that should hold on every turn,
-before the agent ever thinks to look for a skill about it (e.g. `subagent-framework`'s "delegate the build by
-default"). Load-on-demand visibility is the wrong shape for that: it only fires once the agent is already
-considering the topic.
+situation comes up. Some rules can't work that way: they have to be visible **before** the agent would think
+to look for a skill about them (e.g. `subagent-framework`'s "delegate the build by default" — an agent that
+never loads it just writes the code itself).
 
-A skill that needs this declares an optional `global_agent_file_hint:` frontmatter field — one short line
-(a stated default + its exception(s) + a pointer back to the skill; `validate-skill.sh` caps it at 400
-chars). `sync-agent-skills.sh` collects these from whatever's currently in your vendored `SKILLS` set and
-writes them to `.agents/GLOBAL_HINTS.md`, regenerated every sync. Import that file into your agent's
-**always-loaded** instructions once — `@.agents/GLOBAL_HINTS.md` in `CLAUDE.md` for Claude Code's `@import`
-syntax — and it never needs touching again; rule changes arrive through the normal re-sync + pin bump.
-(Harnesses without an import mechanism need a different wiring — e.g. sync rewriting a marked block in the
-agent file directly — not yet implemented here.)
+Those skills ship a second file, **`agent-rules.md`**, written **trigger-first**:
 
-This field is deliberately rare: it costs every consumer real context on every turn, so it's reserved for
-genuine default-posture rules, not a dumping ground for every skill's summary. See **propose-skill** for the
-bar a skill has to clear to carry one.
+```markdown
+**When about to write real code, or spawning a subagent** → `subagent-framework`
+- Don't build in the main loop — delegate implementation by default. Exceptions: …
+```
+
+`sync-agent-skills.sh` concatenates the `agent-rules.md` of whatever is currently in your vendored `SKILLS`
+set into **`.agents/AGENT_RULES.md`**, regenerated every sync. Import it into your agent's **always-loaded**
+instructions once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` (Claude Code's `@import` syntax) — and it never
+needs touching again: new rules, edits, and removals all arrive through the normal re-sync + pin bump.
+
+The result is a **trigger index**: the agent always knows *which situation calls for which skill*, and loads
+the skill itself for the reasoning. That keeps it compliant with pointers-not-copies (**agent-repo-layout**)
+— when a rule and its skill disagree, the skill wins and the rule line is stale.
+
+`validate-skill.sh` enforces a **1200-byte budget** per skill and the opening `**When …**` line. The file is
+deliberately rare — it costs every consumer context on every turn — so see **propose-skill** for the bar a
+skill must clear to carry one. (Harnesses without an import mechanism need different wiring — e.g. sync
+rewriting a marked block in the agent file directly — not implemented here.)
 
 ## Contributing a skill (propose → review)
 
 This repo is the **hub**. To contribute a project-agnostic skill (or a fix), follow the **propose-skill**
 skill: author `skills/<name>/SKILL.md` with the required frontmatter (`name`, `description`, semver
-`version`, optional `requires`/`default-access`/`isolation`), run `scripts/build-registry.sh`, self-check
+`version`, optional `requires`/`default-access`/`isolation`, plus an optional `agent-rules.md`), run
+`scripts/build-registry.sh`, self-check
 with `scripts/validate-skill.sh <name>`, and open a PR. A maintainer accepts it via the
 **review-skill-proposal** skill (the `validate-skill.sh` mechanical checks + a judgment pass: genuinely
 general, non-duplicative, safe, honestly versioned). On merge, the registry bump notifies downstream
