@@ -15,6 +15,8 @@ skills/
   agent-operating-principles/SKILL.md   # research-first · the troubleshooting playbook ·
                                         #   keep-the-troubleshooting-doc-current discipline ·
                                         #   test real code, commit load-bearing spikes as evidence
+  avoid-dense-prose/SKILL.md            # one concern per paragraph or bullet — don't collapse a
+                                        #   claim, a caveat, an example, and a next step into one block
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that

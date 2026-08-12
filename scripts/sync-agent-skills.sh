@@ -29,7 +29,7 @@ set -euo pipefail
 require_tools git jq
 
 PLAYBOOK_REPO="${AGENT_PLAYBOOK_REPO:-https://github.com/MentalGear/agent-playbook.git}"
-SKILLS=(subagent-framework agent-operating-principles independent-expert-review project-gates agent-repo-layout agent-access)
+SKILLS=(subagent-framework agent-operating-principles avoid-dense-prose independent-expert-review project-gates agent-repo-layout agent-access)
 # Skills vendored under .agents/skills/ from a DIFFERENT upstream — not synced here and exempt from
 # pruning. IMPORTANT: external skills are OUTSIDE this gate's integrity perimeter — re-sync never
 # touches them, so a malicious edit to their CONTENT is NOT caught by the `git status` CI gate (only

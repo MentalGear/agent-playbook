@@ -13,6 +13,9 @@ skills:
   agent-repo-layout:
     version: 1.2.0
     sha256: 83afec19c1a448b0e7c0b79f3b222ae61725733b884fadbc9c70d97539657e85
+  avoid-dense-prose:
+    version: 1.0.0
+    sha256: cb9e933dfdb6d4cb1cd0f0ccca8b1655fbd8430678936fdda81b7085fbd2ee42
   end-of-round-report:
     version: 1.0.0
     sha256: 7e4091803f7899375a5c78ecbf68138c3a9e1d124340c5786eb9b7201d99f093
