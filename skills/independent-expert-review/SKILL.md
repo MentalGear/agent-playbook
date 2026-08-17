@@ -1,6 +1,6 @@
 ---
 name: independent-expert-review
-description: Use when you need a neutral, multi-perspective review of a change, design doc, or artifact — convene a panel of independent expert subagents (one per discipline), each blind to the conclusion you want, collect findings on a fixed severity schema, then synthesize and verify every finding against the code in the main loop. Load before reviewing a non-trivial diff, a new component/API, an architecture decision, or anything you want a second (third, fourth) opinion on. Covers panel sizing, the neutral-reviewer contract, the finding schema, adversarial verification, and why agreement is a severity tiebreaker — not a validity signal.
+description: Use when a change or design needs neutral, multi-perspective review. Also when reviewing a non-trivial diff, a new component/API, or an architecture decision. Load before reviewing a non-trivial diff, a new component/API, an architecture decision, or anything you want a second (third, fourth) opinion on. Covers panel sizing, the neutral-reviewer contract, the finding schema, adversarial verification, and why agreement is a severity tiebreaker — not a validity signal.
 user-invocable: false
 default-access: read-only   # the review panel it spawns is read-only (see the agent-access skill)
 version: 1.1.0

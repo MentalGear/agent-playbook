@@ -1,6 +1,6 @@
 ---
 name: solve-by-construction
-description: Use when choosing between designs during planning, when deciding where a fix belongs, and before landing any guard, check, or assertion. Prefer designs that make a failure mode structurally impossible over designs that defend against it at runtime — climb the ladder (guard at the site → validate at a boundary → route through an existing checkpoint → make it unrepresentable) instead of patching where the defect surfaced; run the deconstruction exercise to test whether the current form is the truest one; apply the elegance test to tell real elimination from a guard in disguise; re-run the whole check on the plan before building; and sweep existing code once an invariant lands. Project-agnostic.
+description: Use when choosing between designs, or about to land a guard, check, or assert. Also when deciding where a fix belongs. Runs the loop deconstruct → construct → check against prior art. Prefer designs that make a failure mode structurally impossible over designs that defend against it at runtime — climb the ladder (guard at the site → validate at a boundary → route through an existing checkpoint → make it unrepresentable) instead of patching where the defect surfaced; run the deconstruction exercise to test whether the current form is the truest one; apply the elegance test to tell real elimination from a guard in disguise; re-run the whole check on the plan before building; and sweep existing code once an invariant lands. Project-agnostic.
 user-invocable: false
 version: 1.0.0
 ---
@@ -13,6 +13,27 @@ runtime assert, remove a race by construction (single writer, clear ownership) r
 around it, make an illegal state unrepresentable rather than validate against it. This is a planning-phase
 bias: reach for elimination before defense, and reserve runtime checks for boundaries where elimination
 genuinely isn't possible (real external input, a third-party API).
+
+## 0. The loop — deconstruct, construct, then check against prior art
+
+Three beats, in order. Most of this skill is beat 2; the beats on either side are what keep it honest.
+
+1. **Deconstruct to the root** (§2) — find the layer the problem actually lives at, not the one it
+   surfaced at.
+2. **Construct the fix there** (§1, §3) — climb the ladder to the highest rung the elegance test allows.
+3. **Check the construction against prior art** — before committing to it, look up how this problem is
+   already solved (**agent-operating-principles** §1). Ask the three reuse questions of what you find:
+   can we integrate it, lift the approach, or reuse its tests against ours?
+
+**Beat 3 is the one that gets skipped**, because a construction you just derived feels finished — and
+because the better it feels, the less inclined you are to go looking. That instinct is backwards: an
+elegant-feeling construction is *more* likely to be a solved problem under a name you don't know yet, or
+a known anti-pattern the ecosystem already rejected for a reason you haven't hit. The survey is cheap
+next to discovering either one after you've built on it.
+
+When beat 3 contradicts beat 2, the prior art wins by default — it carries evidence your derivation
+doesn't. Overriding it is allowed, but then say what the prior art got wrong and why your case differs;
+record that as a negative (§1 of **agent-operating-principles**) so the next pass doesn't re-litigate it.
 
 ## 1. Climb the ladder before you land a guard
 

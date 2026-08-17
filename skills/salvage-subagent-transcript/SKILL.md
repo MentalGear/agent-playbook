@@ -1,6 +1,6 @@
 ---
 name: salvage-subagent-transcript
-description: Use when a delegated subagent goes stale (no progress for a long stretch), crashes or dies on a terminal error, gets interrupted, or returns output too thin or garbled to use. How to recover the work before relaunching anything — read the transcript for decisions rather than narration, inspect the workspace it left behind, then choose resume / harvest / discard, and re-scope the contract if the failure was yours. Prevents the default failure mode of spawning a fresh agent over a half-finished one and losing (or clobbering) its partial work.
+description: Use when a subagent goes stale, crashes, or returns nothing usable. Also when it gets interrupted, or its output is too thin to use. How to recover the work before relaunching anything — read the transcript for decisions rather than narration, inspect the workspace it left behind, then choose resume / harvest / discard, and re-scope the contract if the failure was yours. Prevents the default failure mode of spawning a fresh agent over a half-finished one and losing (or clobbering) its partial work.
 user-invocable: false
 version: 1.0.0
 requires: [subagent-framework]

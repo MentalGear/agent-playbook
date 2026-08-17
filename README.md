@@ -13,7 +13,6 @@ skills/
                                         #   the task contract (incl. progress checkpoints), roles,
                                         #   orchestration patterns, guardrails
     reference.md                        #   reference detail: the eval scorecard, two-tier logging, tooling
-    agent-rules.md                      #   always-loaded block (see "Agent rules")
   salvage-subagent-transcript/SKILL.md  # a subagent went stale/crashed/returned junk: harvest the
                                         #   workspace diff + transcript, then resume / harvest / discard
   agent-operating-principles/SKILL.md   # research-first (3 reuse questions, boundary triggers) ·
@@ -43,8 +42,6 @@ skills/
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
   stuck-on-a-problem/SKILL.md           # on the SECOND instance of a defect shape, enumerate the class,
                                         #   fix all, guard it; step up a level instead of patching again
-  <skill>/agent-rules.md                # optional per-skill always-loaded block, assembled by sync into
-                                        #   .agents/AGENT_RULES.md (see "Agent rules" below)
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
@@ -94,8 +91,8 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
 3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
    into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
    writes the lockfile (pin + per-skill version), and (re)generates **`.agents/AGENT_RULES.md`** by
-   concatenating the `agent-rules.md` of whichever vendored skills ship one (most don't — see
-   [Agent rules](#agent-rules) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
+   deriving one routing line per vendored skill from its `description` first sentence (see
+   [Agent rules](#agent-rules--the-generated-routing-index) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
    is deterministic, so CI runs `scripts/sync-agent-skills.sh && git status --porcelain -- .agents .claude`
    (`git status --porcelain`, not `git diff --exit-code`, so an untracked orphaned skill dir is caught too) —
    any hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces drift and fails the build.
@@ -120,39 +117,44 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
 
-### Agent rules
+### Agent rules — the generated routing index
 
-Most skills are **load-on-demand** — the right fit for reference material you consult *when* a matching
-situation comes up. Some rules can't work that way: they have to be visible **before** the agent would think
-to look for a skill about them (e.g. `subagent-framework`'s "delegate the build by default" — an agent that
-never loads it just writes the code itself).
+Most skills are **load-on-demand**: the agent loads one when its `description` matches the situation.
+Some rules need to be visible *before* the agent would think to look for a skill about them.
 
-Those skills ship a second file, **`agent-rules.md`**, written **trigger-first**:
+`sync-agent-skills.sh` therefore generates **`.agents/AGENT_RULES.md`**: one line per vendored skill,
+pairing a trigger with the skill that owns the rule.
 
 ```markdown
-**When about to write real code, or spawning a subagent** → `subagent-framework`
-- Don't build in the main loop — delegate implementation by default. Exceptions: …
+- **about to write real code, or spawning a subagent** → load `subagent-framework`
 ```
 
-`sync-agent-skills.sh` concatenates the `agent-rules.md` of whatever is currently in your vendored `SKILLS`
-set into **`.agents/AGENT_RULES.md`**, regenerated every sync. Import it into your agent's **always-loaded**
-instructions once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` (Claude Code's `@import` syntax) — and it never
-needs touching again: new rules, edits, and removals all arrive through the normal re-sync + pin bump.
+**The trigger is derived, not declared.** It is `description`'s **first sentence**, minus the
+`Use when` lead-in — so there is no second field to drift out of sync with the first. Write the opener
+as a bare trigger and put the detail in the second sentence:
 
-The result is a **trigger index**: the agent always knows *which situation calls for which skill*, and loads
-the skill itself for the reasoning. That keeps it compliant with pointers-not-copies (**agent-repo-layout**)
-— when a rule and its skill disagree, the skill wins and the rule line is stale.
+```yaml
+description: Use when filing a defect, or trusting a test or benchmark result. Also when checking a
+  fix is actually guarded. The discipline that keeps evidence honest — reproduce a defect against …
+```
 
-`validate-skill.sh` enforces a **1200-byte budget** per skill and the opening `**When …**` line. The file is
-deliberately rare — it costs every consumer context on every turn — so see **propose-skill** for the bar a
-skill must clear to carry one. (Harnesses without an import mechanism need different wiring — e.g. sync
-rewriting a marked block in the agent file directly — not implemented here.)
+The generator owns the whole line format; an author supplies only the trigger phrase. **A rule,
+threshold, or caveat cannot be smuggled into always-loaded context**, so the index can never drift from
+or contradict the skill it points at.
+
+Import it into your always-loaded instructions once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` — and it
+never needs touching again; new skills, edits, and removals all arrive via the normal re-sync + pin bump.
+Block order follows your `SKILLS=(…)` declaration order, so the index reads as a workflow.
+
+Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at **120 characters**; an
+over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an
+import mechanism need different wiring — not implemented here.)
 
 ## Contributing a skill (propose → review)
 
 This repo is the **hub**. To contribute a project-agnostic skill (or a fix), follow the **propose-skill**
 skill: author `skills/<name>/SKILL.md` with the required frontmatter (`name`, `description`, semver
-`version`, optional `requires`/`default-access`/`isolation`, plus an optional `agent-rules.md`), run
+`version`, optional `requires`/`default-access`/`isolation`), run
 `scripts/build-registry.sh`, self-check
 with `scripts/validate-skill.sh <name>`, and open a PR. A maintainer accepts it via the
 **review-skill-proposal** skill (the `validate-skill.sh` mechanical checks + a judgment pass: genuinely

@@ -1,6 +1,6 @@
 ---
 name: end-of-round-report
-description: Use when handing back the final summary of a round of work — a shipped fix, a finished review cycle, a research synthesis, a completed multi-step task — and when deciding what to commit, push, or park as the round closes. Set the conclusion off visibly from the working chatter above it (a horizontal rule + a prominent heading) so the user can scan straight to the outcome, current status, and the one decision they need to make; push what is committed and green while parking red or in-flight work; and keep harness mechanics (hook nags, tooling prompts) out of the report entirely. One such block per round, at the very end. Skip it for trivial conversational replies.
+description: Use when closing out a round of work. Also when deciding what to commit, push, or park as the round closes. Set the conclusion off visibly from the working chatter above it (a horizontal rule + a prominent heading) so the user can scan straight to the outcome, current status, and the one decision they need to make; push what is committed and green while parking red or in-flight work; and keep harness mechanics (hook nags, tooling prompts) out of the report entirely. One such block per round, at the very end. Skip it for trivial conversational replies.
 user-invocable: false
 version: 1.1.0
 ---

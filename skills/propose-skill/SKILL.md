@@ -1,6 +1,6 @@
 ---
 name: propose-skill
-description: Use when you have a reusable, project-agnostic skill (or a fix to an existing one) and want to contribute it back to the shared hub (MentalGear/agent-playbook) so other repos can vendor it. Defines the standard contribution format (the skill directory + required frontmatter + a registry bump) and the steps to propose it as a PR that the hub validates with review-skill-proposal. Project-specific skills stay in your repo; only generalizable ones get published.
+description: Use when contributing a skill back to the playbook hub. Defines the standard contribution format (the skill directory + required frontmatter + a registry bump) and the steps to propose it as a PR that the hub validates with review-skill-proposal. Project-specific skills stay in your repo; only generalizable ones get published.
 user-invocable: false
 version: 1.2.0
 requires: [review-skill-proposal]
@@ -29,29 +29,23 @@ keep project-specific guidance in your own repo (it has no home in a shared hub)
 - It must be **parameterized, not project-specific**: gates/paths/commands belong in the consuming repo's
   slots (see `project-gates` / `agent-repo-layout`), not hardcoded in the skill.
 
-### `agent-rules.md` *(optional, rare)* — the always-loaded block
+### The routing trigger is derived from `description`
 
-A skill may ship a second file, `skills/<name>/agent-rules.md`. `sync-agent-skills.sh` concatenates these
-from every vendored skill into `.agents/AGENT_RULES.md`, which the consumer imports **once** into its
-always-loaded agent file (`@.agents/AGENT_RULES.md` in `CLAUDE.md`). So it costs every consumer context on
-every turn, forever — most skills should not have one.
+`sync-agent-skills.sh` builds a consumer's always-loaded routing index (`.agents/AGENT_RULES.md`) from
+each vendored skill's **`description` first sentence**, minus the `Use when` lead-in. There is no
+separate trigger field — one field, one author, nothing to keep in sync.
 
-**Who earns one:** a skill whose rule must be visible *before* the agent would think to load a skill about
-it. A **reference** skill (consulted once a matching situation is already in view) doesn't — good
-`description` triggering is enough. Ask: "if this never loads, does the agent do the wrong thing without
-knowing it?"
+So write the description **trigger-first**:
 
-**Required shape — trigger first**, so the assembled file stays an index rather than an essay:
-
-```markdown
-**When <the situation that fires this>** → `<skill-name>`
-- <imperative, one line>
-- <imperative, one line>
+```yaml
+description: Use when <short trigger>. Also when <secondary triggers>. <What the skill does, at length.>
 ```
 
-`validate-skill.sh` enforces a **1200-byte budget** and the opening `**When …**` line. Write imperatives
-plus a pointer, never a summary of the skill — a summary can disagree with its source, and the
-pointers-not-copies rule (**agent-repo-layout**) says the skill wins when it does.
+- **First sentence = a bare trigger phrase**, ≤120 chars after the lead-in is stripped. Both the sync
+  script and `validate-skill.sh` enforce that cap.
+- **Keep secondary trigger keywords** in an "Also when …" sentence — they still feed on-demand skill
+  matching, which is a separate mechanism from the index.
+- **Detail goes after**, in the same field. `description` is capped at 1,024 chars by the harness.
 
 ## Steps to propose
 1. **Author** `skills/<name>/SKILL.md` with the frontmatter above. Run it past the **independent-expert-review**

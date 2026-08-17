@@ -1,6 +1,6 @@
 ---
 name: stuck-on-a-problem
-description: Use the moment you hit the SECOND instance of a defect shape, or when you notice you're repeatedly fixing the same class of issue without making real progress. Two rules — lift to the class (enumerate every instance, fix them together, land a checked guard) rather than finding a third one at a time, and step up a level of abstraction rather than patching again when fixes cluster around one root cause. Signals you're stuck in a local minimum, not that the next fix will be the one that works.
+description: Use when the second instance of the same defect shape shows up. Also when you're repeatedly fixing the same class of issue without progress. Two rules — lift to the class (enumerate every instance, fix them together, land a checked guard) rather than finding a third one at a time, and step up a level of abstraction rather than patching again when fixes cluster around one root cause. Signals you're stuck in a local minimum, not that the next fix will be the one that works.
 user-invocable: false
 version: 1.1.0
 ---

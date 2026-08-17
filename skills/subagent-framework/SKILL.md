@@ -1,6 +1,6 @@
 ---
 name: subagent-framework
-description: Use before building anything — implementation is delegated to subagents by default, not written in the main loop. This skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
+description: Use when about to write real code, or spawning a subagent. Implementation is delegated to subagents by default, not written in the main loop — this skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract including progress checkpoints, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / salvage / repair), and verifying the result before it lands. The scorecard, logging, and tooling detail live in reference.md; the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands.
 user-invocable: false
 version: 1.3.0
 requires: [project-gates, agent-access]

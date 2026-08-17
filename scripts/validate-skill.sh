@@ -80,21 +80,20 @@ validate_one() {
   local iso; iso="$(fm_scalar "$fm" isolation)"
   [ -n "$iso" ] && { [[ "$iso" =~ ^(inline|subagent)$ ]] || fail "$name: isolation '$iso' must be inline|subagent"; }
 
-  # agent-rules.md is optional and rare on purpose: it lands in every consumer's ALWAYS-LOADED context
-  # (via sync's generated .agents/AGENT_RULES.md), unlike SKILL.md which only loads on demand. Budget it
-  # hard, and require the trigger-first shape so the assembled file stays an index, not an essay.
-  local rules="skills/$name/agent-rules.md"
-  if [ -f "$rules" ]; then
-    local bytes; bytes="$(wc -c < "$rules" | tr -d ' ')"
-    [ "$bytes" -le 1200 ] || fail "$name: agent-rules.md is $bytes bytes (max 1200) — it loads into every consumer's always-loaded context on every turn; move detail into SKILL.md and leave a pointer"
-    head -1 "$rules" | grep -qE '^\*\*When .+\*\*' \
-      || fail "$name: agent-rules.md must open with a trigger line of the form '**When <situation>** → \`$name\`' so the assembled rules file stays indexed by trigger"
-    grep -q "$name" "$rules" \
-      || warn "$name: agent-rules.md doesn't name its own skill — readers can't find the owning skill for the detail"
-  fi
-  # The predecessor mechanism (a one-line frontmatter hint) is gone; catch a skill still carrying it.
+  # The routing trigger is DERIVED from description's first sentence (sync-agent-skills.sh assembles
+  # .agents/AGENT_RULES.md from it) — there is no second field to drift. Budget it here so an
+  # over-long opener fails review rather than bloating every consumer's always-loaded index.
+  local trig; trig="$(printf '%s' "$desc" | sed -E 's/\. .*$//; s/\.$//; s/^Use (when|before|the moment) //')"
+  [ "${#trig}" -le 120 ] || fail "$name: description's first sentence derives a ${#trig}-char routing trigger (max 120) — shorten it to a bare trigger phrase; move detail to the second sentence"
+  printf '%s' "$desc" | grep -qE '^Use (when|before|the moment) ' \
+    || warn "$name: description should open 'Use when <trigger>. …' so the derived routing line reads as a trigger"
+  # Superseded mechanisms — fail loudly rather than silently ignoring a stale field/file.
   [ -n "$(fm_field "$fm" global_agent_file_hint)" ] \
-    && fail "$name: global_agent_file_hint is no longer supported — move it into skills/$name/agent-rules.md (trigger-first, see propose-skill)"
+    && fail "$name: global_agent_file_hint is no longer supported — the routing trigger derives from description's first sentence"
+  [ -n "$(fm_field "$fm" when)" ] \
+    && fail "$name: the separate 'when:' field is no longer supported — the routing trigger derives from description's first sentence"
+  [ -f "skills/$name/agent-rules.md" ] \
+    && fail "$name: agent-rules.md is no longer supported — the routing line is generated from description's first sentence"
 
   # registry carries this skill with a matching whole-dir content hash
   local sha; sha="$(skill_dir_hash "skills/$name")"

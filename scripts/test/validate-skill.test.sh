@@ -88,35 +88,33 @@ validate "$h" a
 { [ "$RC" -ne 0 ] && grep -qi "build-registry.sh failed" <<<"$OUT"; } && ok "stale-check fails when build-registry errors" || no "build-registry failure should fail freshness (rc=$RC): $OUT"
 rm -rf "$h"
 
-# 8) agent-rules.md: absent is fine; well-formed passes; over budget and bad shape REJECT
-h="$(newhub)"; mkskill "$h" norules "name: norules" "description: $LONGDESC" "version: 1.0.0"
-mkskill "$h" ruled "name: ruled" "description: $LONGDESC" "version: 1.0.0"
-printf '**When something happens** -> `ruled`\n- Do the thing.\n' > "$h/skills/ruled/agent-rules.md"
+# 8) derived routing trigger: short opener passes; over-long opener REJECTS; superseded mechanisms REJECT
+h="$(newhub)"
+mkskill "$h" short "name: short" "description: Use when filing a defect. The discipline that keeps evidence honest and so on." "version: 1.0.0"
+LONGTRIG="Use when doing something with an opening sentence that runs on well past any reasonable routing length and simply refuses to stop before the cap"
+mkskill "$h" longtrig "name: longtrig" "description: $LONGTRIG. Body text here." "version: 1.0.0"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" norules
-[ "$RC" -eq 0 ] && ok "no agent-rules.md is fine (optional file)" || no "absent agent-rules should pass (rc=$RC): $OUT"
-validate "$h" ruled
-[ "$RC" -eq 0 ] && ok "well-formed agent-rules.md passes" || no "good agent-rules should pass (rc=$RC): $OUT"
+validate "$h" short
+[ "$RC" -eq 0 ] && ok "short first-sentence trigger passes" || no "short trigger should pass (rc=$RC): $OUT"
+validate "$h" longtrig
+{ [ "$RC" -ne 0 ] && grep -qi "routing trigger" <<<"$OUT"; } && ok "over-long derived trigger REJECTS" || no "long trigger should reject (rc=$RC): $OUT"
 
-# over budget
-mkskill "$h" fat "name: fat" "description: $LONGDESC" "version: 1.0.0"
-{ printf '**When too much is said** -> `fat`\n'; printf -- '- %s\n' $(printf 'padpadpadpadpad%.0s ' $(seq 1 120)); } > "$h/skills/fat/agent-rules.md"
+# a description not opening "Use when …" still passes but WARNS (derived line would read oddly)
+mkskill "$h" noopener "name: noopener" "description: Processes excel files and generates reports for downstream consumers." "version: 1.0.0"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" fat
-{ [ "$RC" -ne 0 ] && grep -qi "agent-rules.md is" <<<"$OUT"; } && ok "over-budget agent-rules.md REJECTS" || no "oversized agent-rules should reject (rc=$RC): $OUT"
+validate "$h" noopener
+{ [ "$RC" -eq 0 ] && grep -qi "should open" <<<"$OUT"; } && ok "non-trigger opener warns but passes" || no "expected warn+pass (rc=$RC): $OUT"
 
-# missing the trigger-first opening line
-mkskill "$h" shapeless "name: shapeless" "description: $LONGDESC" "version: 1.0.0"
-printf -- '- just a bullet, no trigger line\n' > "$h/skills/shapeless/agent-rules.md"
+# superseded: the old frontmatter hint, the old when: field, and the old agent-rules.md file all REJECT
+mkskill "$h" oldhint "name: oldhint" "description: Use when testing. Body." "version: 1.0.0" "global_agent_file_hint: a stale one-liner"
+mkskill "$h" oldwhen "name: oldwhen" "description: Use when testing. Body." "version: 1.0.0" "when: a stale trigger field"
+mkskill "$h" oldfile "name: oldfile" "description: Use when testing. Body." "version: 1.0.0"
+printf -- '**When x** -> `oldfile`\n' > "$h/skills/oldfile/agent-rules.md"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" shapeless
-{ [ "$RC" -ne 0 ] && grep -qi "trigger line" <<<"$OUT"; } && ok "agent-rules.md without a '**When …**' opener REJECTS" || no "shapeless agent-rules should reject (rc=$RC): $OUT"
-
-# the superseded frontmatter field is now an explicit failure, not silently ignored
-mkskill "$h" legacy "name: legacy" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: an old-style one-liner"
-( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" legacy
-{ [ "$RC" -ne 0 ] && grep -qi "no longer supported" <<<"$OUT"; } && ok "legacy global_agent_file_hint REJECTS with a migration hint" || no "legacy field should reject (rc=$RC): $OUT"
+for sk in oldhint oldwhen oldfile; do
+  validate "$h" "$sk"
+  { [ "$RC" -ne 0 ] && grep -qi "no longer supported" <<<"$OUT"; } && ok "superseded mechanism '$sk' REJECTS with migration message" || no "$sk should reject (rc=$RC): $OUT"
+done
 rm -rf "$h"
 
 echo "---"
