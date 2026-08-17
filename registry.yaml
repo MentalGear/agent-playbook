@@ -5,20 +5,20 @@ schema: 1
 skills:
   agent-access:
     version: 1.0.0
-    sha256: b4139c124c005d4bcfbb2f4b8e4482a2ead720f6597ead185a8fe6ebdd9e187f
+    sha256: 3894c5af1a88053a774a6335e47953a670e8b797d6c6c473315b124f82485d78
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 1.3.0
-    sha256: 1f9c2483ce8e91931273184841346734bd2888260f5c2fc0b2534c49bf0e2e89
+    version: 2.0.0
+    sha256: d8c7e9dc6b32367cba70806426f90c5312980f26e4381278e76b270373eb9548
   agent-repo-layout:
-    version: 1.2.0
-    sha256: 83afec19c1a448b0e7c0b79f3b222ae61725733b884fadbc9c70d97539657e85
+    version: 1.3.0
+    sha256: 3c2df1eec4ac1def83fed8b8e8cf97a63e34b34c1e514a4263af37deff64fba7
   end-of-round-report:
-    version: 1.0.0
-    sha256: 7e4091803f7899375a5c78ecbf68138c3a9e1d124340c5786eb9b7201d99f093
+    version: 1.1.0
+    sha256: f909122d67d9c3908068280416d1477a00481c94c7a3fdaa9d2fe45f75091d97
   independent-expert-review:
-    version: 1.0.0
-    sha256: ea279018e4a3c827cb3299f7aac411fa17878a69f3f84748100f5a87ff804a62
+    version: 1.1.0
+    sha256: 3b07416dc56421eb52fa90cc6116a1e827853c2bf3bcd420e977d673950f259f
     requires: [project-gates, agent-access]
     default-access: "read-only"
   project-gates:
@@ -31,10 +31,20 @@ skills:
   review-skill-proposal:
     version: 1.1.0
     sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
-  stuck-on-a-problem:
+  salvage-subagent-transcript:
     version: 1.0.0
-    sha256: 3bcb9edd24c2c573b26b6dc48677c37c81927fd251168e4408a113cd8b048bfe
-  subagent-framework:
+    sha256: bc3087e5e3bd8812808af03449edc7a5e5dd73a367c2c14ff1eb1a7d9a9c8406
+    requires: [subagent-framework]
+  solve-by-construction:
+    version: 1.0.0
+    sha256: 226b2d9bd1fd1eab84627569b65d702c49c2aa6af81eb1dc41b4d587f6b0773b
+  stuck-on-a-problem:
     version: 1.1.0
-    sha256: 188c1d9c936cc3b0968ec7749c46c503b21ab774bbaade50a224c5f5f8962537
+    sha256: 3383f423533bc8df55db4138aa015505417c536efc29dc9dd2846484e854d349
+  subagent-framework:
+    version: 1.2.0
+    sha256: 7332b1ca4d4a10c977c222f6e15b6b1c4b666426c0d1aee39728cd3bc15de4df
     requires: [project-gates, agent-access]
+  verification-instruments:
+    version: 1.0.0
+    sha256: 78362212a399ea6477cb019b9a054d9669e786b2bd34c1eaa9a44da1645ff399

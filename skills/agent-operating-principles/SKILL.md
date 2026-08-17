@@ -1,8 +1,8 @@
 ---
 name: agent-operating-principles
-description: Use before building something new, before reaching for a JS/web-dev tool, before debugging a non-obvious bug, after burning real time on a gotcha, when deciding whether code needs tests, when a spike turns out to matter, and before committing to a design during planning. Six project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); and prefer designing out issues by construction over defending against them at runtime (§6). The host repo names its own research/troubleshooting doc locations.
+description: Use when designing something new, or locking in a decision. Also when reaching for a JS/TS tool, debugging a non-obvious bug, or a spike turns out to matter. Six project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components and three reuse questions per option (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); and pre-commit decision criteria before the evidence exists, recording negatives as first-class results (§6). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 1.3.0
+version: 2.0.0
 ---
 
 # Agent operating principles
@@ -15,8 +15,12 @@ Project-agnostic working discipline for coding agents. Six habits that pay for t
 - **§4 Record what you learned** — after any gotcha that cost real debugging time.
 - **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep (and
   commit the spike itself, out of scratch, once it's load-bearing evidence).
-- **§6 Design out issues by construction** — when choosing between designs during planning, before you
-  commit to one.
+- **§6 Pre-commit your decision criteria** — before gathering the evidence a decision will rest on.
+
+> **Designing out issues by construction** (the elegance test, the ladder, the deconstruction exercise)
+> moved to its own skill: **solve-by-construction**. Verifying that a fix actually holds — probing before
+> filing, mutation-checking the fix, foreign vectors, benchmarks as instruments — lives in
+> **verification-instruments**.
 
 > **Parameterized skill — resolve these slots from the host repo (its `CLAUDE.md`):**
 > - **Research-capture location** (§1) — where prior-art findings are written up (e.g. a `docs/research/`
@@ -41,6 +45,25 @@ project's research folder: the options considered, each one's license / maintena
 **cited recommendation**, so the decision is reviewable later. Only build once you've established that
 nothing suitable exists to adopt or adapt — and at the call site, note which options you checked and why
 none fit.
+
+**Ask three reuse questions of every system the survey returns** — "adopt or not" is too coarse, and the
+second and third questions pay off even when the answer to the first is no:
+1. **Integrate** — can we use a part of it directly, as a dependency?
+2. **Lift** — can we take the approach, the architecture, or the edge cases they handle, and implement it
+   ourselves?
+3. **Reuse their tests** — can we run *their* test suite, vectors, or conformance corpus against our
+   implementation? Foreign tests are the only instrument that catches misconceptions our own tests share
+   (see **verification-instruments** §3), so this one is worth asking even about a system you'd never adopt.
+
+**Bytes that cross a boundary are their own trigger.** A new encoding, wire format, serialization, or
+protocol — anything that crosses a process/engine boundary or persists as a content address — warrants a
+survey even when the design feels obvious and local. These have accumulated decades of documented hazards
+(normalization, surrogates, canonicalization, length-prefix ambiguity); the ecosystem's specs usually name
+the trap you're about to rediscover empirically, and rediscovering it costs far more than the read.
+
+**Record negatives as first-class.** An option you rejected, with the reason, *is* a result — write it into
+the research doc alongside what you chose. Without it the same option gets re-proposed and re-litigated on
+each pass, at full cost, with no new evidence. "We looked at X; rejected because Y" is what stops that.
 
 > Prior-art research is read-heavy, parallelizable, and easy to verify against sources — a prime candidate to
 > **delegate** (see the `subagent-framework` skill), and the resulting recommendation is a good thing to put
@@ -145,28 +168,27 @@ is gone is just an assertion. The test is *dependence, not size*: if a decision,
 would have to re-derive it, it belongs in git. When in doubt, commit it — an unused committed file costs a
 few diff lines; a lost one costs the whole investigation.
 
-## 6. Prefer designing out issues by construction over defending against them
+## 6. Pre-commit your decision criteria — before the evidence exists
 
-When choosing between two designs during planning, prefer the one that makes a failure mode
-**structurally impossible** over the one that adds a check for it after the fact — encode an invariant in
-a type/schema rather than a runtime assert, remove a race by construction (single writer, clear ownership)
-rather than add a lock around it, make an illegal state unrepresentable rather than validate against it.
-This is a planning-phase bias: reach for elimination before defense, and reserve runtime checks for
-boundaries where elimination genuinely isn't possible (real external input, a third-party API).
+When a decision will rest on evidence you haven't gathered yet — a benchmark, a spike, a survey, a trial —
+**write the criteria down first**, while you still don't know which way they'll cut. Three rules make this
+work:
 
-**The deconstruction challenge — find the right layer for the fix.** Don't settle for the first layer
-where the problem is visible. Deconstruct it one level of abstraction up — toward the more general
-condition the symptom is an instance of — and ask whether it's better solved there instead: does moving up
-remove more of the failure mode, or make the fix simpler? Repeat until moving up stops simplifying things.
-That layer, where the construction can't be pushed any further without losing what makes it a construction,
-is where the fix belongs — not necessarily where the symptom first appeared.
+- **Each criterion must be able to kill a named option.** "Should be fast" decides nothing. "If p99 exceeds
+  N ms under workload W, option B is out" is a criterion — it names a threshold, a condition, and the
+  option it would eliminate. If no plausible measurement would change your choice, you aren't running a
+  decision, you're running a justification.
+- **State your bias openly.** You usually have a preferred answer; writing it down ("I expect to land on
+  A") is what lets a reader — and later you — weigh the conclusion against it. An unstated preference
+  silently sets thresholds.
+- **Record deviations rather than retrofitting thresholds.** When the evidence lands outside what you
+  pre-committed to and you choose to go ahead anyway, that's legitimate — but write down *that you
+  deviated and why*. Quietly moving the threshold to match the result destroys the whole instrument, and
+  it's invisible in the final doc unless you say so.
 
-**The elegance test — tell real elimination from a guard in disguise.** A genuine by-construction fix
-removes more complexity than it adds while preserving the same desirable properties. If a "construction"
-fix nets *more* code, more state, or a new invariant to maintain, it isn't elimination — it's a guard
-wearing construction's clothing, and it deserves the same scrutiny as any other defensive check.
+The output is the same research doc as §1 — criteria first, then evidence, then the call — so the decision
+stays reviewable by someone who wasn't there. **Negatives belong in it too** (§1): the options this
+evidence killed are results worth keeping.
 
-**Landing an invariant means sweeping for it.** When a change eliminates a failure mode by construction,
-check whether the same failure mode exists elsewhere in the codebase and would benefit from the same fix.
-A construction-based fix that isn't retroactively swept is only half-landed — the old guard-based instances
-stay in place, still needing defense, still able to drift from the new invariant.
+> Deciding *where* a fix belongs, rather than *which option* to take, is a different discipline — see the
+> **solve-by-construction** skill (the ladder, the elegance test).

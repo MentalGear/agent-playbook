@@ -12,9 +12,18 @@ skills/
     SKILL.md                            # delegate to subagents & keep the judgment: when to delegate,
                                         #   the task contract, roles, orchestration patterns, guardrails
     reference.md                        #   reference detail: the eval scorecard, two-tier logging, tooling
-  agent-operating-principles/SKILL.md   # research-first · the troubleshooting playbook ·
-                                        #   keep-the-troubleshooting-doc-current discipline ·
-                                        #   test real code, commit load-bearing spikes as evidence
+  agent-operating-principles/SKILL.md   # research-first (3 reuse questions, boundary triggers) ·
+                                        #   the troubleshooting playbook · keep-the-troubleshooting-doc
+                                        #   -current discipline · test real code, commit load-bearing
+                                        #   spikes as evidence · pre-commit decision criteria
+  solve-by-construction/SKILL.md        # eliminate the failure mode instead of guarding it: the loop
+                                        #   (deconstruct → construct → check prior art), the rung ladder,
+                                        #   the elegance test, sweep once an invariant lands
+  verification-instruments/SKILL.md     # keeping evidence honest: probe before filing · formalise as the
+                                        #   cheapest oracle · foreign vectors · mutation-check the fix in
+                                        #   an isolated worktree · benchmarks as committed instruments
+  salvage-subagent-transcript/SKILL.md  # a subagent went stale/crashed/returned junk: harvest the
+                                        #   workspace diff + transcript, then resume / harvest / discard
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
@@ -27,8 +36,8 @@ skills/
   propose-skill/SKILL.md                # how to contribute a skill back to this hub (format + steps)
   review-skill-proposal/SKILL.md        # receiver-side validation contract for a proposed skill
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
-  stuck-on-a-problem/SKILL.md           # recognize repeated same-class fixes as a local-minimum signal;
-                                        #   step up a level of abstraction instead of patching again
+  stuck-on-a-problem/SKILL.md           # on the SECOND instance of a defect shape, enumerate the class,
+                                        #   fix all, guard it; step up a level instead of patching again
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
@@ -43,13 +52,15 @@ VERSION                                 # the human-facing release ref (consumer
 
 The skills interlock: **subagent-framework** is the delegation contract, **independent-expert-review** is the
 review-panel pattern it references, **project-gates** is the shared gate-manifest schema both of them point
-at, **agent-repo-layout** is the standard repo structure + permission map, **agent-access** is the
-scope/isolation vocabulary delegations declare (resolving against that map), and **agent-operating-principles**
-is the cross-cutting working discipline. A skill folder may carry
+at, **salvage-subagent-transcript** is what you reach for when a delegation dies, **agent-repo-layout** is
+the standard repo structure + permission map, **agent-access** is the scope/isolation vocabulary delegations
+declare (resolving against that map), **solve-by-construction** and **verification-instruments** are the
+fix-it-at-the-right-layer and prove-it-actually-holds halves of landing a change, and
+**agent-operating-principles** is the cross-cutting working discipline. A skill folder may carry
 extra files beyond `SKILL.md` (e.g. `subagent-framework/reference.md`), so vendor the **whole skill
 directory**, not just the entry file.
 
-All six skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
+All skills are deliberately parameterized: they define the *slots* (which gates to run, where the logs and
 docs live), and the **consuming repo supplies the values** — its gates in a `project-gates` manifest, the
 rest typically in its `CLAUDE.md`. Get that seam right and a skill drops into a non-Svelte, non-JS repo with
 only its slot values changed (the gate categories are an open list — UI a11y/visual-regression are
