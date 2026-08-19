@@ -25,12 +25,12 @@ skills:
     version: 1.0.0
     sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
   propose-skill:
-    version: 1.1.0
-    sha256: c8b8d1b71760a4de0854ad80325ce2d8e6d58ed2e2c9fadd61113b360a2e8b60
+    version: 1.2.0
+    sha256: 1ddc80d96978a3b5d229be47c5f36d002fbf1f16a30377cc528b94368de43059
     requires: [review-skill-proposal]
   review-skill-proposal:
-    version: 1.1.0
-    sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
+    version: 1.2.0
+    sha256: 4eafb7cb795c12e457d51702974930a7122eacd02191dac1bf0cccd938c881cd
   salvage-subagent-transcript:
     version: 1.0.0
     sha256: bc3087e5e3bd8812808af03449edc7a5e5dd73a367c2c14ff1eb1a7d9a9c8406

@@ -86,9 +86,9 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    in the diff. Re-run with no args to stay at the locked pin; `PLAYBOOK_REF=<new-sha>` to bump it.
 3. The script vendors each whole skill directory into `.agents/skills/<name>/`, injects a provenance header
    into each `SKILL.md`, creates the `.claude/skills/` symlinks, **prunes** any skill dropped from `SKILLS`,
-   writes the lockfile (pin + per-skill version), and (re)generates **`.agents/GLOBAL_HINTS.md`** from the
-   `global_agent_file_hint` frontmatter of whichever vendored skills declare one (most don't — see
-   [Global agent hints](#global-agent-hints) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
+   writes the lockfile (pin + per-skill version), and (re)generates **`.agents/AGENT_RULES.md`** by deriving
+   one routing line per vendored skill from its `description` first sentence (see
+   [Agent rules](#agent-rules--the-generated-routing-index) below). **Integrity is a re-sync + git gate, not a hash:** `sync`
    is deterministic, so CI runs `scripts/sync-agent-skills.sh && git status --porcelain -- .agents .claude`
    (`git status --porcelain`, not `git diff --exit-code`, so an untracked orphaned skill dir is caught too) —
    any hand-edit, doctored lockfile, orphaned skill, or injected symlink reproduces drift and fails the build.
@@ -97,15 +97,15 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    commands, flow — see the `project-gates` skill for the schema). This is the structured source of truth for
    your gates; see [`skills/project-gates/SKILL.md`](skills/project-gates/SKILL.md) for a filled example.
 5. **Wire it into your `CLAUDE.md`**: replace the general guidance with thin skill-pointers that defer to the
-   manifest, plus **one static import line** for the generated hints file (see below). Generic form:
-   > *@.agents/GLOBAL_HINTS.md*
+   manifest, plus **one static import line** for the generated routing index (see below). Generic form:
+   > *@.agents/AGENT_RULES.md*
    >
    > *Delegate per the `subagent-framework` skill; this project's gates are declared in `.agents/gates.yaml`
    > (`project-gates`). Log each delegation in `<log path>`. For review panels use the
    > `independent-expert-review` skill; persist rounds in `<research dir>`.*
 
    Concrete example (the Svelte/SvelteKit repo this was extracted from):
-   > *@.agents/GLOBAL_HINTS.md*
+   > *@.agents/AGENT_RULES.md*
    >
    > *Delegate per the **`subagent-framework`** skill. **This project's gates** live in
    > `.agents/gates.yaml` (per **`project-gates`**) — always `bun run check` + `bun run lint`; logic
@@ -113,26 +113,38 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
 
-### Global agent hints
+### Agent rules — the generated routing index
 
-Most skills are **load-on-demand** — the right fit for reference material you consult *when* a matching
-situation comes up. A few encode a **default posture** instead — a rule that should hold on every turn,
-before the agent ever thinks to look for a skill about it (e.g. `subagent-framework`'s "delegate the build by
-default"). Load-on-demand visibility is the wrong shape for that: it only fires once the agent is already
-considering the topic.
+Most skills are **load-on-demand**: the agent loads one when its `description` matches the situation. Some
+rules need to be visible *before* the agent would think to look for a skill about them.
 
-A skill that needs this declares an optional `global_agent_file_hint:` frontmatter field — one short line
-(a stated default + its exception(s) + a pointer back to the skill; `validate-skill.sh` caps it at 400
-chars). `sync-agent-skills.sh` collects these from whatever's currently in your vendored `SKILLS` set and
-writes them to `.agents/GLOBAL_HINTS.md`, regenerated every sync. Import that file into your agent's
-**always-loaded** instructions once — `@.agents/GLOBAL_HINTS.md` in `CLAUDE.md` for Claude Code's `@import`
-syntax — and it never needs touching again; rule changes arrive through the normal re-sync + pin bump.
-(Harnesses without an import mechanism need a different wiring — e.g. sync rewriting a marked block in the
-agent file directly — not yet implemented here.)
+`sync-agent-skills.sh` therefore generates **`.agents/AGENT_RULES.md`**: one line per vendored skill,
+pairing a trigger with the skill that owns the rule.
 
-This field is deliberately rare: it costs every consumer real context on every turn, so it's reserved for
-genuine default-posture rules, not a dumping ground for every skill's summary. See **propose-skill** for the
-bar a skill has to clear to carry one.
+```markdown
+- **about to write real code, or spawning a subagent** → load `subagent-framework`
+```
+
+**The trigger is derived, not declared.** It is `description`'s **first sentence**, minus the `Use when`
+lead-in — so there is no second field to drift out of sync with the first. Write the opener as a bare
+trigger and put the detail after it:
+
+```yaml
+description: Use when filing a defect, or trusting a test or benchmark result. Also when checking a fix
+  is actually guarded. The discipline that keeps evidence honest — reproduce a defect against the real …
+```
+
+The generator owns the whole line format; an author supplies only the trigger phrase. **A rule, threshold,
+or caveat cannot be smuggled into always-loaded context**, so the index can never drift from or contradict
+the skill it points at.
+
+Import it once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` — and it never needs touching again; new skills,
+edits, and removals all arrive via the normal re-sync + pin bump. Line order follows your `SKILLS=(…)`
+declaration order, so the index reads as a workflow.
+
+Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at **120 characters**; an
+over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an import
+mechanism need different wiring — not implemented here.)
 
 ## Contributing a skill (propose → review)
 

@@ -80,13 +80,20 @@ validate_one() {
   local iso; iso="$(fm_scalar "$fm" isolation)"
   [ -n "$iso" ] && { [[ "$iso" =~ ^(inline|subagent)$ ]] || fail "$name: isolation '$iso' must be inline|subagent"; }
 
-  # global_agent_file_hint is optional and rare on purpose: it lands in every consumer's ALWAYS-LOADED
-  # context (via sync's generated .agents/GLOBAL_HINTS.md), unlike `description` which only loads on
-  # demand. Budget it hard — a stated default + its exception(s) + a pointer back to the skill, not prose.
-  local hint; hint="$(fm_field "$fm" global_agent_file_hint)"
-  if [ -n "$hint" ]; then
-    [ "${#hint}" -le 400 ] || fail "$name: global_agent_file_hint is ${#hint} chars (max 400, ~2 short lines) — it loads into every consumer's always-loaded context on every turn, keep it tight"
-  fi
+  # The routing trigger is DERIVED from description's first sentence (sync-agent-skills.sh assembles
+  # .agents/AGENT_RULES.md from it) — there is no second field to drift. Budget it here so an
+  # over-long opener fails review rather than bloating every consumer's always-loaded index.
+  local trig; trig="$(printf '%s' "$desc" | sed -E 's/\. .*$//; s/\.$//; s/^Use (when|before|the moment) //')"
+  [ "${#trig}" -le 120 ] || fail "$name: description's first sentence derives a ${#trig}-char routing trigger (max 120) — shorten it to a bare trigger phrase; move detail to the second sentence"
+  printf '%s' "$desc" | grep -qE '^Use (when|before|the moment) ' \
+    || warn "$name: description should open 'Use when <trigger>. …' so the derived routing line reads as a trigger"
+  # Superseded mechanisms — fail loudly rather than silently ignoring a stale field/file.
+  [ -n "$(fm_field "$fm" global_agent_file_hint)" ] \
+    && fail "$name: global_agent_file_hint is no longer supported — the routing trigger derives from description's first sentence"
+  [ -n "$(fm_field "$fm" when)" ] \
+    && fail "$name: the separate 'when:' field is no longer supported — the routing trigger derives from description's first sentence"
+  [ -f "skills/$name/agent-rules.md" ] \
+    && fail "$name: agent-rules.md is no longer supported — the routing line is generated from description's first sentence"
 
   # registry carries this skill with a matching whole-dir content hash
   local sha; sha="$(skill_dir_hash "skills/$name")"
