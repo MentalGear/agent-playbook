@@ -1,13 +1,13 @@
 ---
 name: agent-operating-principles
-description: Use when designing something new, or locking in a decision. Also when reaching for a JS/TS tool, debugging a non-obvious bug, or a spike turns out to matter. Six project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components and three reuse questions per option (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); and pre-commit decision criteria before the evidence exists, recording negatives as first-class results (§6). The host repo names its own research/troubleshooting doc locations.
+description: Use when designing something new, or locking in a decision. Also when reaching for a JS/TS tool, debugging a non-obvious bug, or a spike turns out to matter. Seven project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components and three reuse questions per option (§1); default to Bun for JS/TS tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); pre-commit decision criteria before the evidence exists, recording negatives as first-class results (§6); and challenge a proposed concept or fundamental change before building it, treating hedged wording as an invitation for feedback rather than a softened order (§7). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 2.0.0
+version: 2.1.0
 ---
 
 # Agent operating principles
 
-Project-agnostic working discipline for coding agents. Six habits that pay for themselves repeatedly;
+Project-agnostic working discipline for coding agents. Seven habits that pay for themselves repeatedly;
 **load the relevant section for the moment you're in:**
 - **§1 Research before you build** — when a new component/feature/capability is needed.
 - **§2 Reach for Bun** — when you need a JS/TS package manager, script runner, or test runner.
@@ -16,6 +16,8 @@ Project-agnostic working discipline for coding agents. Six habits that pay for t
 - **§5 Test real code** — when code stops being a throwaway spike and becomes something you'll keep (and
   commit the spike itself, out of scratch, once it's load-bearing evidence).
 - **§6 Pre-commit your decision criteria** — before gathering the evidence a decision will rest on.
+- **§7 Challenge a proposal before you build it** — when someone proposes a new concept or a fundamental
+  change, especially a tentative one.
 
 > **Designing out issues by construction** (the elegance test, the ladder, the deconstruction exercise)
 > moved to its own skill: **solve-by-construction**. Verifying that a fix actually holds — probing before
@@ -192,3 +194,28 @@ evidence killed are results worth keeping.
 
 > Deciding *where* a fix belongs, rather than *which option* to take, is a different discipline — see the
 > **solve-by-construction** skill (the ladder, the elegance test).
+
+## 7. Challenge a proposal before you build it
+
+When someone proposes a **new concept or a fundamental change** — a mechanism, a schema, a rewrite of how
+something works — evaluate it before implementing it. You have read the code more recently than the person
+proposing; that is exactly the asymmetry that makes your feedback worth something.
+
+**Hedging is an invitation, not a softened order.** "I think", "maybe", "we could probably", "what if we"
+mark *lower confidence*, not lower authority. A tentative proposal is the one most worth pushing back on —
+it is being floated for judgement, not handed down for execution. Reading hedged language as "just do it"
+inverts what it actually signals.
+
+**Raise it once, with a recommendation.** State the concern and the better alternative in a few lines, then
+proceed — this is one round, not a negotiation. Give a recommendation rather than a survey of options; "I'd
+do X because Y, though Z is defensible" is useful, an unranked list of five possibilities is not.
+
+**A reaffirmation is the decision.** If they hear the concern and restate the request, build it — and don't
+relitigate it later in the same work. Record the concern as a negative (§1) if it might resurface, so the
+next pass has the reasoning without re-running the argument.
+
+**Stop offering when told to.** If they have recently signalled they want execution rather than discussion,
+or have already overruled you on this point, skip the feedback and build.
+
+The bar is *fundamental change*, not every instruction. A concrete task with a clear shape doesn't need a
+design critique in front of it; that is friction, not diligence.
