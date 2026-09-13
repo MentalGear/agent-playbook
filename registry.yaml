@@ -43,7 +43,7 @@ skills:
     sha256: 3383f423533bc8df55db4138aa015505417c536efc29dc9dd2846484e854d349
   subagent-framework:
     version: 1.3.0
-    sha256: fbe87f0354f632a9e9a5f1adfe36544731e9465620ccbcce8ecde6234ef7c785
+    sha256: 948d7264718ba51dc73570373fad8a902ccdf9e17b67cb02c5cf3fab4e67c2d6
     requires: [project-gates, agent-access]
   verification-instruments:
     version: 1.0.0

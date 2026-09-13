@@ -97,6 +97,10 @@ State the tier on every delegation.
 
 The rule is the *mapping*, not the names — a consumer on Anthropic models reads that as Opus / Sonnet / Haiku.
 
+This table is **asserted, not measured**. The delegation log is what can falsify it — record tier · task
+class · outcome per delegation and read the pattern by class, with an occasional deliberate downshift so the
+mapping can move *down* and not only up. See `reference.md` → **Tier fit**.
+
 Pick by **role**, then map the role to whatever model tier fits your provider:
 - **Orchestrator** — the main loop. Owns design, decomposition, synthesis, and the gate. Use your strongest
   model; delegate *to* it only for a genuinely hard sub-problem.

@@ -1,6 +1,6 @@
 # Deferred: forced-choice routing, and sub-agent bidirectional messaging
 
-**Date:** 2026-08-28
+**Date:** 2026-09-13
 **Status:** deferred — not rejected on principle; deferred for lack of evidence and, in one case, for a
 harness dependency the hub cannot specify.
 **Context:** proposed while building the routing index (`.agents/AGENT_RULES.md`, PR #17) and the
