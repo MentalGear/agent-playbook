@@ -73,6 +73,66 @@ out="$(cd "$c" && AGENT_PLAYBOOK_SRC="$empty" bash scripts/update-check.sh 2>&1)
   && ok "no-registry/offline source skips with exit 0 (advisory)" || no "no-registry should exit 0 + message (rc=$rc): $out"
 rm -rf "$c" "$empty"
 
+# CHANGELOG migration notes: only ACTION REQUIRED entries, only those newer than the consumer's pin.
+h="$(mktemp -d)"; printf 'schema: 1\nskills:\n  foo:\n    version: 2.0.0\n    sha256: a\n' > "$h/registry.yaml"
+cat > "$h/CHANGELOG.md" <<'CL'
+# Changelog
+
+## How an agent uses this
+Prose that names ACTION REQUIRED while explaining the marker, and carries no commit of its own.
+
+## 2026-01-03 — `PLACEHOLDER_NEW` A change needing work
+- **ACTION REQUIRED:** edit your CLAUDE.md import line.
+
+## 2026-01-02 — `PLACEHOLDER_QUIET` An additive change newer than the pin
+- Purely additive, nothing for a consumer to do.
+
+## 2026-01-01 — `PLACEHOLDER_OLD` A change needing nothing
+- Already in your pin.
+CL
+( cd "$h" && git init -q -b main && GI add -A && GI commit -qm c1 )
+old_sha="$(git -C "$h" rev-parse HEAD)"
+printf 'x\n' >> "$h/CHANGELOG.md"; ( cd "$h" && GI add -A && GI commit -qm c2 )
+quiet_sha="$(git -C "$h" rev-parse HEAD)"
+printf 'y\n' >> "$h/CHANGELOG.md"; ( cd "$h" && GI add -A && GI commit -qm c3 )
+new_sha="$(git -C "$h" rev-parse HEAD)"
+sed -i "s/PLACEHOLDER_OLD/$old_sha/; s/PLACEHOLDER_QUIET/$quiet_sha/; s/PLACEHOLDER_NEW/$new_sha/" "$h/CHANGELOG.md"
+( cd "$h" && GI add -A && GI commit -qm c4 )
+
+mkc() { local c; c="$(mktemp -d)"; mkdir -p "$c/scripts" "$c/.agents"; cp "$SRC/lib.sh" "$SRC/update-check.sh" "$c/scripts/"
+  printf '{\n  "playbook_repo": "https://github.com/x/y.git",\n  "pinned_sha": "%s",\n  "skills": { "foo": "1.0.0" }\n}\n' "$1" > "$c/.agents/skills-lock.json"; echo "$c"; }
+
+c="$(mkc "$old_sha")"
+out="$(cd "$c" && AGENT_PLAYBOOK_SRC="$h" bash scripts/update-check.sh 2>&1)"
+{ grep -q "MIGRATION NOTES" <<<"$out" && grep -q "edit your CLAUDE.md import line" <<<"$out"; } \
+  && ok "migration notes surface an ACTION REQUIRED entry newer than the pin" \
+  || no "migration note missing: $out"
+
+# The changelog's OWN prose mentions the marker but carries no commit — it must never be printed.
+# (awk index(list,"") returns 1, so an unguarded empty sha matches every entry.)
+grep -q "How an agent uses this" <<<"$out" \
+  && no "changelog prose (no commit) leaked into the migration notes" \
+  || ok "changelog prose without a commit is not reported"
+
+# An entry already contained in the consumer's pin is not a migration for them.
+grep -q "A change needing nothing" <<<"$out" \
+  && no "an entry at-or-before the pin was reported as a migration" \
+  || ok "entries already in the pin are not reported"
+
+# An entry NEWER than the pin but carrying no ACTION REQUIRED is noise — an advisory that lists
+# everything gets skimmed. This needs an entry newer than the pin, or the ancestor filter hides it
+# and the assertion proves nothing.
+grep -q "An additive change newer than the pin" <<<"$out" \
+  && no "a newer entry with no ACTION REQUIRED was reported" \
+  || ok "newer entries without ACTION REQUIRED are not reported"
+
+# A consumer already at the newest entry sees no migration notes at all.
+c2="$(mkc "$(git -C "$h" rev-parse HEAD)")"
+out2="$(cd "$c2" && AGENT_PLAYBOOK_SRC="$h" bash scripts/update-check.sh 2>&1)"
+grep -q "MIGRATION NOTES" <<<"$out2" && no "up-to-date consumer shown migration notes" \
+  || ok "a consumer at HEAD sees no migration notes"
+rm -rf "$h" "$c" "$c2"
+
 echo "---"
 echo "update-check: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]

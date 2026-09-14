@@ -68,6 +68,45 @@ fi
 [ "${#new[@]}" -gt 0 ]        && { echo "  + new skills:";               printf '      - %s\n' "${new[@]}"; }
 [ "${#vdep[@]}" -gt 0 ]       && { echo "  ⛔ DEPRECATED (vendored here):"; printf '      - %s\n' "${vdep[@]}"; }
 [ "${#deprecated[@]}" -gt 0 ] && { echo "  ⚠ deprecated (not vendored):"; printf '      - %s\n' "${deprecated[@]}"; }
+# --- Migration notes from the hub's CHANGELOG -----------------------------------------------------
+# The one channel that reaches a consumer whose VENDORED SCRIPTS are too old to warn them: the notes
+# live in the hub and are read at upgrade time, not executed on their machine. Print only entries newer
+# than their pin, and only those marked ACTION REQUIRED — an advisory that lists everything is skimmed.
+hub_dir=""; [ -n "${AGENT_PLAYBOOK_SRC:-}" ] && hub_dir="$AGENT_PLAYBOOK_SRC" || hub_dir="$tmp/ap"
+changelog="$hub_dir/CHANGELOG.md"
+locked_pin="$(lock_pin "$lock")"
+if [ -f "$changelog" ]; then
+  # Entry headers are "## <date> — `<sha>` <title>". An entry applies if its commit is NOT already an
+  # ancestor of the consumer's pin. A shallow clone can't answer that, so fall back to printing all
+  # action-required entries rather than silently printing none.
+  actions="$(awk -v RS='\n## ' 'NR>1 && /ACTION REQUIRED/ {print "## " $0}' "$changelog" 2>/dev/null || true)"
+  if [ -n "$actions" ]; then
+    applicable=""
+    while IFS= read -r entry_sha; do
+      [ -n "$entry_sha" ] || continue
+      if git -C "$hub_dir" cat-file -e "${entry_sha}^{commit}" 2>/dev/null \
+         && git -C "$hub_dir" merge-base --is-ancestor "$entry_sha" "$locked_pin" 2>/dev/null; then
+        continue   # already in their pin — not a migration for them
+      fi
+      applicable="$applicable$entry_sha"$'\n'
+    done <<<"$(printf '%s\n' "$actions" | sed -n 's/^## .*`\([0-9a-f]\{7,40\}\)`.*/\1/p')"
+    if [ -n "${applicable//[$'\n' ]/}" ]; then
+      echo "  ⚑ MIGRATION NOTES — hub changes since your pin that need action in THIS repo:"
+      # Drive the loop from the SHELL's sed-extracted list and match with awk index(): mawk (the
+      # default awk on Debian/Ubuntu) does NOT support {n,m} interval expressions, so a `[0-9a-f]{7,40}`
+      # match here silently never fires. Only entries carrying a commit are iterated, so this also
+      # cannot print this file's own prose.
+      while IFS= read -r entry_sha; do
+        [ -n "$entry_sha" ] || continue
+        printf '%s\n' "$actions" | awk -v sha="$entry_sha" '
+          /^## / { show = (index($0, sha) > 0); if (show) print "      " $0; next }
+          show && /ACTION REQUIRED/ { sub(/^[[:space:]]*-?[[:space:]]*/,""); print "        → " $0 }'
+      done <<<"$applicable"
+      echo "      Full notes: ${repo%.git}/blob/main/CHANGELOG.md"
+    fi
+  fi
+fi
+
 if [ "${#updated[@]}" -gt 0 ] || [ "${#new[@]}" -gt 0 ]; then
   if [[ "$resolved_ref_sha" =~ ^[0-9a-f]{40}$ ]]; then
     echo "  To adopt ${REGISTRY_REF} (resolved → $resolved_ref_sha):"

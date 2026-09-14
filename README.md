@@ -40,6 +40,8 @@ skills/
                                         #   fix all, guard it; step up a level instead of patching again
 standing-rules.md                       # curated always-loaded rules (verbatim, no skill names) — the
                                         #   "## Standing rules" half of the generated AGENT_RULES.md
+CHANGELOG.md                            # consumer-facing changes; ACTION REQUIRED entries are the
+                                        #   upgrade channel that reaches a stale vendored script
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
@@ -193,9 +195,22 @@ pin is behind. It compares a version rather than a file hash on purpose — you 
 cp <hub>/scripts/sync-agent-skills.sh <hub>/scripts/lib.sh scripts/   # then restore your SKILLS list
 ```
 
-`ALLOW_STALE_SYNC_SCRIPT=1` overrides it for a deliberate mid-migration run. **This check cannot help a
-consumer whose script predates the check itself** — nothing we ship runs on their machine until they
-re-copy. For that population the only remedy is this section.
+`ALLOW_STALE_SYNC_SCRIPT=1` overrides it for a deliberate mid-migration run.
+
+**This check cannot help a consumer whose script predates the check itself** — nothing we ship executes on
+their machine until they re-copy it. That population is exactly what [`CHANGELOG.md`](CHANGELOG.md) is
+for: it lives in the hub and is *read* at upgrade time rather than executed, so it reaches them regardless
+of how old their scripts are. Every change needing work in the consuming repo carries a literal
+**`ACTION REQUIRED`** marker, and `update-check.sh` prints the ones between your pin and upstream:
+
+```
+  ⚑ MIGRATION NOTES — hub changes since your pin that need action in THIS repo:
+      ## 2026-09-14 — `88c0b58` (#17) Rule index replaces the per-skill hint field
+        → ACTION REQUIRED: change your CLAUDE.md import line.
+```
+
+The two mechanisms cover complementary populations: the version check catches it mechanically but only
+from v2 on; the changelog catches it for anyone, but only if they read it.
 
 ## Contributing a skill (propose → review)
 
