@@ -24,6 +24,8 @@ skills/
                                         #   an isolated worktree · benchmarks as committed instruments
   salvage-subagent-transcript/SKILL.md  # a subagent went stale/crashed/returned junk: harvest the
                                         #   workspace diff + transcript, then resume / harvest / discard
+  avoid-dense-prose/SKILL.md            # one concern per paragraph or bullet — don't collapse a
+                                        #   claim, a caveat, an example, and a next step into one block
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
