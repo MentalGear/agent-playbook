@@ -293,6 +293,65 @@ rm -f "$hubs/standing-rules.md"; ( cd "$hubs" && GI add -A && GI commit -qm drop
   && ok "no standing-rules.md → routes only, no empty section" || no "empty-standing-rules shape wrong"
 rm -rf "$cons" "$hubs"
 
+# 28-31) STALE SCRIPT: a consumer's vendored copy older than the hub must refuse, before mutating.
+# Reproduces the real failure: a v1 script against a v2 hub deleted the consumer's rules file, wrote
+# no replacement, and exited 0.
+hubv="$(mktemp -d)"; mkdir -p "$hubv/skills/aaa" "$hubv/scripts"
+printf -- '---\nname: aaa\nversion: 1.0.0\ndescription: Use when aaa fires. Body.\n---\n\n# aaa\n' > "$hubv/skills/aaa/SKILL.md"
+cp "$SRC/sync-agent-skills.sh" "$hubv/scripts/"
+( cd "$hubv" && git init -q -b main && GI add -A && GI commit -qm init )
+cons="$(mkcons "aaa")"
+
+# 28) same version → silent, and the index is written
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubv" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && ! grep -q "stale\|is v[0-9]" <<<"$out" && [ -f "$cons/.agents/AGENT_RULES.md" ]; } \
+  && ok "matching script version syncs silently" || no "same-version path noisy or failed (rc=$rc): $out"
+
+# 29) hub NEWER than the consumer's script → refuse, and leave the vendored tree untouched
+sed -i 's/^SYNC_SCRIPT_VERSION=[0-9]*$/SYNC_SCRIPT_VERSION=99/' "$hubv/scripts/sync-agent-skills.sh"
+( cd "$hubv" && GI add -A && GI commit -qm bump ) >/dev/null 2>&1
+# Hash the WHOLE vendored tree + lockfile, not one late-written file: a check that runs after any
+# mutation must be caught, not just one that runs after the last mutation.
+treehash() { ( cd "$1" && { cat .agents/skills-lock.json 2>/dev/null; \
+  find .agents .claude -type f -o -type l 2>/dev/null | LC_ALL=C sort \
+  | xargs -I{} sh -c 'echo {}; cat {} 2>/dev/null'; } | sha256sum ); }
+pre="$(treehash "$cons")"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubv" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+post="$(treehash "$cons")"
+{ [ $rc -ne 0 ] && grep -q "re-copy\|Re-copy" <<<"$out" && [ "$pre" = "$post" ]; } \
+  && ok "stale consumer script refuses and does not touch the vendored tree" \
+  || no "stale-script refusal wrong (rc=$rc, tree changed=$([ "$pre" = "$post" ] && echo n || echo y)): $out"
+
+# 30) the override still works, for a deliberate mid-migration run
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubv" ALLOW_STALE_SYNC_SCRIPT=1 bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && grep -q "ALLOW_STALE_SYNC_SCRIPT=1" <<<"$out"; } \
+  && ok "ALLOW_STALE_SYNC_SCRIPT=1 overrides the refusal" || no "override failed (rc=$rc): $out"
+
+# 31) hub OLDER than the script is harmless — warn, don't fail
+sed -i 's/^SYNC_SCRIPT_VERSION=[0-9]*$/SYNC_SCRIPT_VERSION=1/' "$hubv/scripts/sync-agent-skills.sh"
+( cd "$hubv" && GI add -A && GI commit -qm down ) >/dev/null 2>&1
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubv" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -eq 0 ] && grep -q "pin is behind your script" <<<"$out"; } \
+  && ok "hub older than the script warns but succeeds" || no "older-hub path wrong (rc=$rc): $out"
+rm -rf "$cons" "$hubv"
+
+# 32-33) TRIGGER COLLISIONS in a consumer's vendored set: warn, never fail.
+hubc="$(mktemp -d)"; mkdir -p "$hubc/skills/alpha" "$hubc/skills/beta" "$hubc/skills/gamma" "$hubc/scripts"
+printf -- '---\nname: alpha\nversion: 1.0.0\ndescription: Use when contributing a skill back to the playbook hub. Body.\n---\n\n# alpha\n' > "$hubc/skills/alpha/SKILL.md"
+printf -- '---\nname: beta\nversion: 1.0.0\ndescription: Use when reviewing a skill proposed to the playbook hub. Body.\n---\n\n# beta\n' > "$hubc/skills/beta/SKILL.md"
+printf -- '---\nname: gamma\nversion: 1.0.0\ndescription: Use when a subagent crashes mid-flight. Body.\n---\n\n# gamma\n' > "$hubc/skills/gamma/SKILL.md"
+cp "$SRC/sync-agent-skills.sh" "$hubc/scripts/"
+( cd "$hubc" && git init -q -b main && GI add -A && GI commit -qm init )
+cons="$(mkcons "alpha beta gamma")"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubc" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+cw="$(grep -A3 "near-duplicate routing triggers" <<<"$out" || true)"
+{ [ $rc -eq 0 ] && [ -n "$cw" ] && grep -q alpha <<<"$cw" && grep -q beta <<<"$cw" && [ -f "$cons/.agents/AGENT_RULES.md" ]; } \
+  && ok "colliding triggers warn without failing the consumer's sync" \
+  || no "consumer collision warn wrong (rc=$rc): $out"
+grep -q "gamma" <<<"$(grep 'near-duplicate' -A3 <<<"$out" | grep '↔' || true)" \
+  && no "gamma flagged despite a distinct trigger" || ok "distinct trigger not flagged in the consumer's set"
+rm -rf "$cons" "$hubc"
+
 rm -rf "$hub"
 echo "---"
 echo "sync: $pass passed, $failed failed."

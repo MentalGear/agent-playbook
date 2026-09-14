@@ -125,6 +125,29 @@ check_registry_fresh() {
   rm -f "$before" "$after"
 }
 
+# Near-duplicate routing triggers, across the WHOLE hub. Always corpus-wide even when validating one
+# skill, because the valuable case is exactly that: a new proposal whose trigger reads like an
+# existing skill's. Warns rather than fails — two genuinely paired skills (propose/review halves of
+# one workflow) legitimately share vocabulary, and only a human can tell that from a real collision.
+check_trigger_collisions() {
+  local focus="${1:-}" rows out
+  rows="$(for d in skills/*/; do
+    local n f t; n="$(basename "$d")"; f="$d/SKILL.md"; [ -f "$f" ] || continue
+    t="$(awk 'NR==1&&/^---/{fm=1;next} fm&&/^---/{exit} fm' "$f" \
+       | sed -n 's/^description:[[:space:]]*//p' | head -1 \
+       | sed -E 's/\. .*$//; s/\.$//; s/^Use (when|before|the moment) //')"
+    [ -n "$t" ] && printf '%s\t%s\n' "$n" "$t"
+  done)"
+  out="$(printf '%s\n' "$rows" | trigger_collisions)"
+  [ -n "$out" ] || return 0
+  while IFS=$'\t' read -r score a b; do
+    [ -n "$score" ] || continue
+    if [ -z "$focus" ] || [ "$a" = "$focus" ] || [ "$b" = "$focus" ]; then
+      warn "near-duplicate routing triggers: $a ↔ $b (${score} content-word overlap) — an agent may load the wrong one; sharpen one description's first sentence"
+    fi
+  done <<<"$out"
+}
+
 targets=()
 if [ "${1:---all}" = "--all" ]; then
   for d in skills/*/; do targets+=("$(basename "$d")"); done
@@ -135,6 +158,7 @@ fi
 echo "Validating ${#targets[@]} skill(s)…"
 check_registry_fresh
 for t in "${targets[@]}"; do validate_one "$t"; done
+if [ "${1:---all}" = "--all" ]; then check_trigger_collisions; else check_trigger_collisions "$1"; fi
 
 echo "---"
 if [ "$fails" -gt 0 ]; then

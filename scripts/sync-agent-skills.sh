@@ -19,10 +19,13 @@
 #   - Re-sync at the locked pin: run with no args.
 # Overrides: PLAYBOOK_DEFAULT_REF (first-pin ref), ALLOW_NONDEFAULT_PIN=1 (skip ancestry check).
 #
-# Also (re)generates .agents/AGENT_RULES.md by concatenating the agent-rules.md of each vendored skill
-# that ships one — trigger-indexed standing rules meant for your agent's ALWAYS-LOADED instructions, not
-# just its load-on-demand skills. Import it once: add `@.agents/AGENT_RULES.md` to CLAUDE.md. It lives
-# under .agents/, so the same git-status integrity gate above covers it.
+# Also (re)generates .agents/AGENT_RULES.md — your agent's ALWAYS-LOADED rule index, in two sections:
+# standing rules (verbatim from the hub's standing-rules.md) and routes (one derived trigger per vendored
+# skill). Import it once: add `@.agents/AGENT_RULES.md` to CLAUDE.md. It lives under .agents/, so the
+# same git-status integrity gate above covers it.
+#
+# UPGRADING: this script is vendored too. Re-copy it whenever you bump the pin — a stale copy generates
+# the old output shape and can silently drop rules. SYNC_SCRIPT_VERSION (below) makes that check itself.
 set -euo pipefail
 # shellcheck source=scripts/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "sync: cannot source lib.sh" >&2; exit 3; }
@@ -129,9 +132,38 @@ if [[ "$first_pin" == 1 ]]; then
   echo "→ First sync: pinned $resolved_sha (from $PLAYBOOK_REPO). REVIEW this SHA AND playbook_repo in $(basename "$lockfile") before committing." >&2
 fi
 
+# --- Staleness check: is THIS script older than the hub it is vendoring from? ---------------------
+# A consumer runs their OWN copy of this script, so a hub change that alters what gets generated is
+# inert until they re-copy it. That failure is silent by default: the old script cheerfully writes the
+# old shape (or nothing), exits 0, and the git-status gate stays clean because the stale output is
+# exactly what the stale script is supposed to produce. Observed: a v1 script against a v2 hub DELETES
+# the consumer's GLOBAL_HINTS.md, never writes AGENT_RULES.md, and exits 0 — every standing rule gone,
+# no warning. Compare a VERSION, not a file hash: consumers are told to edit SKILLS=(…), so their copy
+# always differs byte-wise and a hash check would cry wolf on every legitimate run.
+SYNC_SCRIPT_VERSION=2
+hub_script="$src/scripts/sync-agent-skills.sh"
+# `|| true`: a hub with no scripts/ dir (or predating this marker) simply has nothing to compare —
+# that is not an error, and under `set -euo pipefail` a failing substitution here would abort the sync.
+hub_script_version="$(sed -n 's/^SYNC_SCRIPT_VERSION=\([0-9][0-9]*\).*/\1/p' "$hub_script" 2>/dev/null | head -1 || true)"
+if [[ -n "$hub_script_version" ]]; then
+  if [[ "$SYNC_SCRIPT_VERSION" -lt "$hub_script_version" ]]; then
+    echo "ERROR: your scripts/sync-agent-skills.sh is v$SYNC_SCRIPT_VERSION but the hub at this pin ships v$hub_script_version." >&2
+    echo "       Syncing with a stale script silently generates the OLD shape — it can drop rules your" >&2
+    echo "       CLAUDE.md still imports, and the integrity gate will not catch it. Re-copy the script:" >&2
+    echo "         cp <hub>/scripts/sync-agent-skills.sh <hub>/scripts/lib.sh scripts/" >&2
+    echo "       then restore your SKILLS=(…) and EXTERNAL_SKILLS=(…) lists and re-run." >&2
+    echo "       Set ALLOW_STALE_SYNC_SCRIPT=1 to override (you will get the old output shape)." >&2
+    [[ -n "${ALLOW_STALE_SYNC_SCRIPT:-}" ]] || exit 2
+    echo "WARN: ALLOW_STALE_SYNC_SCRIPT=1 — proceeding with the stale script's output shape." >&2
+  elif [[ "$SYNC_SCRIPT_VERSION" -gt "$hub_script_version" ]]; then
+    # Harmless: script newer than the pinned hub. Nothing is lost; the pin is just behind.
+    echo "WARN: script is v$SYNC_SCRIPT_VERSION but the pinned hub ships v$hub_script_version — the pin is behind your script." >&2
+  fi
+fi
+
 mkdir -p "$vendor_dir" "$link_dir"
 lock_entries=()
-rules_rows=()     # "<skill>\x1f<when>" per skill declaring `when:` — assembled into .agents/AGENT_RULES.md
+rules_rows=()     # "<skill>\x1f<trigger>" per vendored skill — assembled into .agents/AGENT_RULES.md
 
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
@@ -227,6 +259,23 @@ if [ -n "$rules_text" ]; then
     && { echo "ERROR: a standing rule names a skill in backticks — that makes it a route, not a rule; move it to the skill's description first sentence" >&2; exit 1; }
 fi
 
+# Warn (don't fail) on near-duplicate triggers in the set THIS consumer vendored. Two triggers that
+# read alike mean the agent loads whichever it saw first and the other skill never fires. Not fatal:
+# the colliding text lives in the hub, which the consumer does not control, so failing their build
+# over it would punish the party who cannot fix it. They CAN act on it by dropping one from SKILLS.
+if [ "${#rules_rows[@]}" -gt 1 ]; then
+  collisions="$(for row in "${rules_rows[@]}"; do
+      IFS=$'\x1f' read -r sk when <<<"$row"; printf '%s\t%s\n' "$sk" "$when"
+    done | trigger_collisions)"
+  if [ -n "$collisions" ]; then
+    echo "WARN: near-duplicate routing triggers — the agent may load the wrong skill:" >&2
+    while IFS=$'\t' read -r score a b; do
+      [ -n "$score" ] && echo "        $a ↔ $b (${score} word overlap)" >&2
+    done <<<"$collisions"
+    echo "      Drop one from SKILLS=(…), or ask the hub to sharpen a description's first sentence." >&2
+  fi
+fi
+
 rules_file="$repo_root/.agents/AGENT_RULES.md"
 if [ "${#rules_rows[@]}" -gt 0 ] || [ -n "$rules_text" ]; then
   {
@@ -274,6 +323,7 @@ fi
   echo "{"
   echo "  \"playbook_repo\": \"$PLAYBOOK_REPO\","
   echo "  \"pinned_sha\": \"$resolved_sha\","
+  echo "  \"sync_script_version\": $SYNC_SCRIPT_VERSION,"
   echo "  \"skills\": {"
   for i in "${!lock_entries[@]}"; do
     sep=","; [ "$i" -eq $((${#lock_entries[@]} - 1)) ] && sep=""
