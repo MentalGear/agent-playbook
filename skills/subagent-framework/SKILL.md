@@ -1,10 +1,9 @@
 ---
 name: subagent-framework
-description: Use before building anything — implementation is delegated to subagents by default, not written in the main loop. This skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / repair), and verifying the result before it lands. The core operating rules; the scorecard, logging, and tooling detail live in reference.md, and the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands. Load before any non-trivial delegation.
+description: Use when about to write real code, or spawning a subagent. Implementation is delegated to subagents by default, not written in the main loop — this skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract including progress checkpoints, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / salvage / repair), and verifying the result before it lands. The scorecard, logging, and tooling detail live in reference.md; the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 requires: [project-gates, agent-access]
-global_agent_file_hint: Don't build in the main loop — delegate implementation to subagents by default. Exceptions: small changes (<~15 min / <~100 lines) and delegation that has repeatedly failed. See the subagent-framework skill, §1a/§1b.
 ---
 
 # Subagent framework — delegate work, keep the judgment
@@ -75,8 +74,10 @@ attempts**, not one bad round:
 2. **Before re-delegating, suspect your own contract.** A worker that drifts or stalls is usually an
    under-specified §3 hand-off — missing step outline, unstated design call, scope too wide. That's an
    orchestrator bug; fix the spec (or split the task) and re-delegate once.
-3. **If that re-scoped attempt also fails, take it over.** Discard any isolated workspace rather than
-   merging it (§4), and build from the failure evidence — the failing gate output is now your spec.
+3. **If that re-scoped attempt also fails, take it over.** Run the salvage decision first — harvest the
+   workspace diff, or discard it — per the **salvage-subagent-transcript** skill; never merge an
+   unsalvaged workspace blind. Then build from the failure evidence: the failing gate output is now
+   your spec.
 
 **Log the fallback** in the delegation log with the reason. Repeated fallbacks on the same *kind* of task
 are the signal that matters: that task type needs a better contract, a stronger worker tier, or it isn't
@@ -105,13 +106,26 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    `.agents/access.yaml`; plus any explicit don't-touch.
 5. **Acceptance checks** — what "done" means (§3a).
 6. **Output format** — compact structured return; "your final message IS the deliverable." Fixed schema for
-   reviews.
+   reviews. **Report worse-than-expected first:** the return leads with what came out weaker than hoped,
+   what couldn't be verified, and where the agent is least confident — before the accomplishments. An agent
+   that falsifies its own draft is working correctly, not failing; a uniformly positive report is a smell,
+   not a success.
 7. **Budget/parallelism** — background? batch? worktree?
 8. **Step outline (the orchestrator's job).** For any non-trivial task, **design and hand over an ordered,
    numbered step plan** — not just a goal. The orchestrator owns the decomposition and the hard design calls
    (resolve ambiguous/idiomatic choices *before* delegating); the worker executes. A goal-only prompt makes
    the agent re-derive design under-context and drift. Outlining steps is also where you catch that a task
    should be split or kept.
+9. **Progress checkpoints — required for anything long-running or multi-step.** Have the agent emit a short
+   status at defined points (per completed step, or per milestone in the §8 outline): what's done, what's
+   in flight, what's blocked. Write it where you can read it *without interrupting the agent* — a log file,
+   a task update, a scratch note — not only in the final return.
+
+   Without checkpoints a long delegation is opaque until it ends, and the three states you most need to
+   distinguish — **working**, **stuck**, and **dead** — look identical from outside. Checkpoints are also
+   what make recovery possible when it dies mid-flight (see the **salvage-subagent-transcript** skill);
+   an agent with no progress trail leaves you nothing but its workspace diff to reconstruct from. Keep each
+   checkpoint short — a few lines, not a narration; the distilled-return rule (§0.5) applies here too.
 
 ### 3a. Which gates to run (the acceptance checks)
 Gates are **declared in the host's gate manifest** — see the **project-gates** skill for the schema
@@ -135,17 +149,25 @@ Gates are **declared in the host's gate manifest** — see the **project-gates**
 - **Adversarial verify** — a second agent (given **identical scope**) tries to *refute* a finding; a
   refutation without a cited counter-reason is invalid. **Default on for BLOCKER/MAJOR and any
   security/invariant surface; off for MINOR/NIT.**
+- **Salvage** — when an agent goes stale, crashes, or returns something unusable, recover before you
+  relaunch: its workspace diff and transcript usually hold most of the work. See the
+  **salvage-subagent-transcript** skill; never spawn a fresh agent over a half-finished one.
 - **Repair loop** — feed the failing gate output back to the **same** agent. **Resume, don't restart:**
   relaunch that agent from its transcript (a "continue this agent" message), never spawn a fresh one — a
   fresh agent discards the partial progress and may clobber its half-finished work on disk. "Unproductive" =
   the same check still failing after a round. Cap: **1 round** for < ~1 h tasks, **2** for larger. On
-  exhaustion, **escalate to the main loop**; if it ran in an isolated workspace, **discard it** (e.g.
-  `git worktree remove --force`), don't merge. If round 2 looks substantively like round 1, escalate
-  immediately — don't send a 3rd.
+  exhaustion, **escalate to the main loop** and run the salvage decision on its workspace
+  (**salvage-subagent-transcript**) — harvest or discard deliberately, never merge it unexamined. If
+  round 2 looks substantively like round 1, escalate immediately — don't send a 3rd.
 
 ## 5. Verify before it lands
 **Gate (binary, observed by the main loop):** the §3a checks for what the task touched. No gate pass → not
 done, regardless of how good it looks or what the agent claims. **Read the diff** before committing.
+
+**Spot-check the load-bearing claims, not a uniform sample.** Identify the handful of claims the
+conclusion actually rests on — the measurement a decision hangs on, the "I verified X" behind a green
+result — and check those yourself against the source or the tool output. Sampling evenly spends the same
+effort confirming claims that wouldn't change anything if wrong.
 
 For substantial or first-of-its-type delegations, score the result and log it — the **scorecard rubric,
 two-tier logging, and rotation** live in **reference.md**.
