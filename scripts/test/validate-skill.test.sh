@@ -117,6 +117,47 @@ for sk in oldhint oldwhen oldfile; do
 done
 rm -rf "$h"
 
+# TRIGGER COLLISIONS: near-duplicate routing triggers warn (never fail) and name the pair.
+h="$(newhub)"
+mkskill "$h" alpha "name: alpha" "description: Use when contributing a skill back to the playbook hub. $LONGDESC" "version: 1.0.0"
+mkskill "$h" beta  "name: beta"  "description: Use when reviewing a skill proposed to the playbook hub. $LONGDESC" "version: 1.0.0"
+mkskill "$h" gamma "name: gamma" "description: Use when a subagent crashes mid-flight. $LONGDESC" "version: 1.0.0"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+validate "$h" --all
+CW="$(grep "near-duplicate routing triggers" <<<"$OUT" || true)"   # the collision lines only
+{ [ "$RC" -eq 0 ] && [ -n "$CW" ] && grep -q alpha <<<"$CW" && grep -q beta <<<"$CW"; } \
+  && ok "near-duplicate triggers WARN (rc=0) and name the colliding pair" \
+  || no "collision warn wrong (rc=$RC): $OUT"
+
+# A distinct trigger must NOT be reported — a check that fires on everything says nothing.
+# Match against the collision lines, not all output (every skill's name appears in the normal log).
+grep -q gamma <<<"$CW" && no "gamma has a distinct trigger but was flagged" \
+  || ok "a distinct trigger is not flagged (no blanket firing)"
+
+# Triggers that share ONLY filler words are not a collision — this pins the stopword filter, without
+# which "about to write the code" / "about to read the notes" score 0.43 on about/to/the alone.
+h2="$(newhub)"
+mkskill "$h2" writer "name: writer" "description: Use when about to write the code. $LONGDESC" "version: 1.0.0"
+mkskill "$h2" reader "name: reader" "description: Use when about to read the notes. $LONGDESC" "version: 1.0.0"
+( cd "$h2" && bash scripts/build-registry.sh >/dev/null )
+validate "$h2" --all
+grep -q "near-duplicate" <<<"$OUT" \
+  && no "filler-word-only overlap reported as a collision (stopword filter not applied)" \
+  || ok "triggers overlapping only on filler words are not flagged"
+rm -rf "$h2"
+
+# Validating ONE skill still compares it against the whole hub (the new-proposal case)…
+validate "$h" alpha
+grep -q "near-duplicate routing triggers" <<<"$OUT" \
+  && ok "single-skill validate still catches a collision with an existing skill" \
+  || no "single-skill validate missed the corpus collision: $OUT"
+
+# …but reports only pairs involving that skill.
+validate "$h" gamma
+grep -q "near-duplicate" <<<"$OUT" && no "validating gamma reported an unrelated pair" \
+  || ok "single-skill validate reports only pairs involving that skill"
+rm -rf "$h"
+
 echo "---"
 echo "validate-skill: $pass passed, $failed failed."
 [ "$failed" -eq 0 ]

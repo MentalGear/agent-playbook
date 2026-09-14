@@ -160,6 +160,34 @@ Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at *
 over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an import
 mechanism need different wiring — not implemented here.)
 
+Both also **warn on near-duplicate triggers**, the most-cited cause of wrong-skill selection: if two
+triggers read alike, the agent loads whichever it saw first and the other skill never fires. The measure
+is *lexical* — overlap of content words, stopwords dropped — so it catches a trigger written by copying a
+neighbour's and tweaking it, and it will **not** catch two triggers that mean the same thing in different
+words. That half is still a human judgment at review. It warns rather than fails: two genuinely paired
+skills (the propose/review halves of one workflow) legitimately share vocabulary, and a consumer cannot
+fix hub-authored wording anyway.
+
+### Upgrading — re-copy the script when you bump the pin
+
+`sync-agent-skills.sh` is vendored into your repo, so **a hub change to what gets generated is inert until
+you re-copy the script.** That used to fail silently: a script from before the rules mechanism, run against
+a hub that has it, deletes the rules file it knew about, writes no replacement, and exits 0 — with the
+integrity gate clean, because the stale output is exactly what the stale script should produce.
+
+The script now carries a `SYNC_SCRIPT_VERSION` and compares it against the hub's at the pinned SHA. Older
+than the hub, it **refuses before touching the vendored tree** and names the fix; newer, it warns that the
+pin is behind. It compares a version rather than a file hash on purpose — you are *expected* to edit
+`SKILLS=(…)`, so a hash would differ on every legitimate run.
+
+```
+cp <hub>/scripts/sync-agent-skills.sh <hub>/scripts/lib.sh scripts/   # then restore your SKILLS list
+```
+
+`ALLOW_STALE_SYNC_SCRIPT=1` overrides it for a deliberate mid-migration run. **This check cannot help a
+consumer whose script predates the check itself** — nothing we ship runs on their machine until they
+re-copy. For that population the only remedy is this section.
+
 ## Contributing a skill (propose → review)
 
 This repo is the **hub**. To contribute a project-agnostic skill (or a fix), follow the **propose-skill**

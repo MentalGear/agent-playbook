@@ -1,8 +1,8 @@
 ---
 name: review-skill-proposal
-description: Use when reviewing a skill proposed to the hub. The receiver-side validation contract — run scripts/validate-skill.sh and confirm the structural checks (frontmatter schema, version bump, requires resolve, declared access within the allowed vocabulary, registry freshness) plus the human checks (genuinely general, not duplicative, safe). The counterpart to propose-skill.
+description: Use when you are the maintainer accepting or rejecting an inbound skill proposal. The receiver-side validation contract — run scripts/validate-skill.sh and confirm the structural checks (frontmatter schema, version bump, requires resolve, declared access within the allowed vocabulary, registry freshness) plus the human checks (genuinely general, not duplicative, safe). The counterpart to propose-skill.
 user-invocable: false
-version: 1.2.0
+version: 1.3.0
 ---
 
 # Review a skill proposal — validating before it lands
@@ -54,8 +54,10 @@ The script proves the shape; **you** decide the substance:
 6. **Is the first sentence a real trigger?** The validator caps its length and warns if it doesn't open
    `Use when …`, but it can't judge whether the phrase actually names a *situation*. Reject an opener that
    describes the skill instead of naming when it fires — that line becomes the consumer's routing index,
-   and a description-shaped trigger routes nothing. Check too that it doesn't collide with an existing
-   skill's trigger: near-duplicate triggers are the most-cited cause of wrong-skill selection.
+   and a description-shaped trigger routes nothing. On collisions the validator now **warns** on
+   near-duplicate triggers, but only lexically (shared content words) — it cannot see two triggers that
+   mean the same thing in different words, and that is the half you have to judge. Near-duplicate
+   triggers are the most-cited cause of wrong-skill selection.
 
 ## On accept
 Merge; the regenerated `registry.yaml` publishes the new version. Downstream consumers pick it up via their
