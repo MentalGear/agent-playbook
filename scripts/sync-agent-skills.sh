@@ -273,9 +273,10 @@ if [ "${#rules_rows[@]}" -gt 0 ] || [ -n "$rules_text" ]; then
     echo "# Rule index"
     echo
     if [ -n "$rules_text" ]; then
+      # No section blurb: the heading already says these are standing rules, and a sentence
+      # explaining the section to the agent is commentary about the file rather than an
+      # instruction it can act on — always-loaded bytes that change no behaviour.
       echo "## Standing rules"
-      echo
-      echo "These hold on every turn. They are stated in full here and have no source skill."
       echo
       # Per line, not per argument: `printf '- %s\n' "$multiline"` bullets only the first line.
       printf '%s\n' "$rules_text" | sed 's/^/- /'
