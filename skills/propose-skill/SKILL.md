@@ -1,8 +1,8 @@
 ---
 name: propose-skill
-description: Use when you have a reusable, project-agnostic skill (or a fix to an existing one) and want to contribute it back to the shared hub (MentalGear/agent-playbook) so other repos can vendor it. Defines the standard contribution format (the skill directory + required frontmatter + a registry bump) and the steps to propose it as a PR that the hub validates with review-skill-proposal. Project-specific skills stay in your repo; only generalizable ones get published.
+description: Use when contributing a skill back to the playbook hub. Defines the standard contribution format (the skill directory + required frontmatter + a registry bump) and the steps to propose it as a PR that the hub validates with review-skill-proposal. Project-specific skills stay in your repo; only generalizable ones get published.
 user-invocable: false
-version: 1.1.0
+version: 1.2.0
 requires: [review-skill-proposal]
 ---
 
@@ -26,17 +26,26 @@ keep project-specific guidance in your own repo (it has no home in a shared hub)
   - `requires:` *(optional)* — other skills it depends on (must exist in the hub).
   - `default-access:` / `isolation:` *(optional)* — declare per the **agent-access** skill if the skill
     spawns sub-agents; a non-`read-only` default needs maintainer sign-off.
-  - `global_agent_file_hint:` *(optional, rare)* — one short line (≤400 chars), only for a skill that sets
-    a **default posture** (a rule that should hold before the agent ever thinks to look for a skill about
-    it) rather than **reference material** (consulted once a matching situation is already in view). Most
-    skills are reference and carry no hint. It lands in every consumer's always-loaded
-    `.agents/GLOBAL_HINTS.md` via `sync-agent-skills.sh` (see the hub README's "Global agent hints"), so it
-    costs real context on every turn for every consumer, forever — the bar is "this must be visible before
-    the triggering moment even occurs," not "this is important." State the default + its exception(s) + a
-    pointer back to the full skill; don't restate `description`, which stays the (longer, trigger-phrased)
-    load-on-demand match text.
 - It must be **parameterized, not project-specific**: gates/paths/commands belong in the consuming repo's
   slots (see `project-gates` / `agent-repo-layout`), not hardcoded in the skill.
+
+### The routing trigger is derived from `description`
+
+`sync-agent-skills.sh` builds a consumer's always-loaded routing index (`.agents/AGENT_RULES.md`) from
+each vendored skill's **`description` first sentence**, minus the `Use when` lead-in. There is no
+separate trigger field — one field, one author, nothing to keep in sync.
+
+So write the description **trigger-first**:
+
+```yaml
+description: Use when <short trigger>. Also when <secondary triggers>. <What the skill does, at length.>
+```
+
+- **First sentence = a bare trigger phrase**, ≤120 chars after the lead-in is stripped. Both the sync
+  script and `validate-skill.sh` enforce that cap.
+- **Keep secondary trigger keywords** in an "Also when …" sentence — they still feed on-demand skill
+  matching, which is a separate mechanism from the index.
+- **Detail goes after**, in the same field. `description` is capped at 1,024 chars by the harness.
 
 ## Steps to propose
 1. **Author** `skills/<name>/SKILL.md` with the frontmatter above. Run it past the **independent-expert-review**

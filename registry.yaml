@@ -8,14 +8,11 @@ skills:
     sha256: 3894c5af1a88053a774a6335e47953a670e8b797d6c6c473315b124f82485d78
     requires: [agent-repo-layout]
   agent-operating-principles:
-    version: 2.0.0
-    sha256: d8c7e9dc6b32367cba70806426f90c5312980f26e4381278e76b270373eb9548
+    version: 2.1.0
+    sha256: 5632b562672de56f24807310db1a5f0dd013112214d8d420626e84d68dd592fb
   agent-repo-layout:
     version: 1.3.0
     sha256: 3c2df1eec4ac1def83fed8b8e8cf97a63e34b34c1e514a4263af37deff64fba7
-  avoid-dense-prose:
-    version: 1.0.0
-    sha256: cb9e933dfdb6d4cb1cd0f0ccca8b1655fbd8430678936fdda81b7085fbd2ee42
   end-of-round-report:
     version: 1.1.0
     sha256: f909122d67d9c3908068280416d1477a00481c94c7a3fdaa9d2fe45f75091d97
@@ -28,25 +25,25 @@ skills:
     version: 1.0.0
     sha256: 95e4beac730783b8d659caedb41360609ea11268b88880f62186631b26ccf043
   propose-skill:
-    version: 1.1.0
-    sha256: c8b8d1b71760a4de0854ad80325ce2d8e6d58ed2e2c9fadd61113b360a2e8b60
+    version: 1.2.0
+    sha256: 1ddc80d96978a3b5d229be47c5f36d002fbf1f16a30377cc528b94368de43059
     requires: [review-skill-proposal]
   review-skill-proposal:
-    version: 1.1.0
-    sha256: f86af39f4c9edaa15bed3d04501cec984ca08e3827789ca6abd6f28c583b60c6
+    version: 1.2.0
+    sha256: 4eafb7cb795c12e457d51702974930a7122eacd02191dac1bf0cccd938c881cd
   salvage-subagent-transcript:
     version: 1.0.0
     sha256: bc3087e5e3bd8812808af03449edc7a5e5dd73a367c2c14ff1eb1a7d9a9c8406
     requires: [subagent-framework]
   solve-by-construction:
-    version: 1.0.0
-    sha256: 226b2d9bd1fd1eab84627569b65d702c49c2aa6af81eb1dc41b4d587f6b0773b
+    version: 1.0.1
+    sha256: 9d2547700edc4353c570044090e845a8e6827ec10eb6367ca52a36a8833ccb1e
   stuck-on-a-problem:
     version: 1.1.0
     sha256: 3383f423533bc8df55db4138aa015505417c536efc29dc9dd2846484e854d349
   subagent-framework:
-    version: 1.2.0
-    sha256: 7332b1ca4d4a10c977c222f6e15b6b1c4b666426c0d1aee39728cd3bc15de4df
+    version: 1.3.0
+    sha256: 948d7264718ba51dc73570373fad8a902ccdf9e17b67cb02c5cf3fab4e67c2d6
     requires: [project-gates, agent-access]
   verification-instruments:
     version: 1.0.0

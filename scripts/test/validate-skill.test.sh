@@ -88,19 +88,33 @@ validate "$h" a
 { [ "$RC" -ne 0 ] && grep -qi "build-registry.sh failed" <<<"$OUT"; } && ok "stale-check fails when build-registry errors" || no "build-registry failure should fail freshness (rc=$RC): $OUT"
 rm -rf "$h"
 
-# 8) global_agent_file_hint: absent is fine; within budget passes; over budget REJECTS
-h="$(newhub)"; mkskill "$h" nohint "name: nohint" "description: $LONGDESC" "version: 1.0.0"
-mkskill "$h" hinted "name: hinted" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: Short default rule. See hinted skill."
+# 8) derived routing trigger: short opener passes; over-long opener REJECTS; superseded mechanisms REJECT
+h="$(newhub)"
+mkskill "$h" short "name: short" "description: Use when filing a defect. The discipline that keeps evidence honest and so on." "version: 1.0.0"
+LONGTRIG="Use when doing something with an opening sentence that runs on well past any reasonable routing length and simply refuses to stop before the cap"
+mkskill "$h" longtrig "name: longtrig" "description: $LONGTRIG. Body text here." "version: 1.0.0"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" nohint
-[ "$RC" -eq 0 ] && ok "no global_agent_file_hint is fine (optional field)" || no "absent hint should pass (rc=$RC): $OUT"
-validate "$h" hinted
-[ "$RC" -eq 0 ] && ok "in-budget global_agent_file_hint passes" || no "short hint should pass (rc=$RC): $OUT"
-long="$(printf 'x%.0s' $(seq 1 410))"
-mkskill "$h" oversized "name: oversized" "description: $LONGDESC" "version: 1.0.0" "global_agent_file_hint: $long"
+validate "$h" short
+[ "$RC" -eq 0 ] && ok "short first-sentence trigger passes" || no "short trigger should pass (rc=$RC): $OUT"
+validate "$h" longtrig
+{ [ "$RC" -ne 0 ] && grep -qi "routing trigger" <<<"$OUT"; } && ok "over-long derived trigger REJECTS" || no "long trigger should reject (rc=$RC): $OUT"
+
+# a description not opening "Use when …" still passes but WARNS (derived line would read oddly)
+mkskill "$h" noopener "name: noopener" "description: Processes excel files and generates reports for downstream consumers." "version: 1.0.0"
 ( cd "$h" && bash scripts/build-registry.sh >/dev/null )
-validate "$h" oversized
-{ [ "$RC" -ne 0 ] && grep -qi "global_agent_file_hint is" <<<"$OUT"; } && ok "over-budget global_agent_file_hint REJECTS" || no "oversized hint should reject (rc=$RC): $OUT"
+validate "$h" noopener
+{ [ "$RC" -eq 0 ] && grep -qi "should open" <<<"$OUT"; } && ok "non-trigger opener warns but passes" || no "expected warn+pass (rc=$RC): $OUT"
+
+# superseded: the old frontmatter hint, the old when: field, and the old agent-rules.md file all REJECT
+mkskill "$h" oldhint "name: oldhint" "description: Use when testing. Body." "version: 1.0.0" "global_agent_file_hint: a stale one-liner"
+mkskill "$h" oldwhen "name: oldwhen" "description: Use when testing. Body." "version: 1.0.0" "when: a stale trigger field"
+mkskill "$h" oldfile "name: oldfile" "description: Use when testing. Body." "version: 1.0.0"
+printf -- '**When x** -> `oldfile`\n' > "$h/skills/oldfile/agent-rules.md"
+( cd "$h" && bash scripts/build-registry.sh >/dev/null )
+for sk in oldhint oldwhen oldfile; do
+  validate "$h" "$sk"
+  { [ "$RC" -ne 0 ] && grep -qi "no longer supported" <<<"$OUT"; } && ok "superseded mechanism '$sk' REJECTS with migration message" || no "$sk should reject (rc=$RC): $OUT"
+done
 rm -rf "$h"
 
 echo "---"

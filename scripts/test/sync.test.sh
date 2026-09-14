@@ -200,33 +200,98 @@ out="$(cd "$cons" && PLAYBOOK_REF="$head18" AGENT_PLAYBOOK_REPO="$hub18" bash sc
   || no "rollback fail-open expected WARN+proceed (rc=$rc): $out"
 rm -rf "$cons" "$hub18"
 
-# 19) global_agent_file_hint: a hinted skill produces .agents/GLOBAL_HINTS.md with its hint text; a
-#     skill with no hint contributes no line and (if it's the only vendored skill) no file at all.
+# 19) routing index derives from description's first sentence; a skill without a description contributes nothing
 hubh="$(mktemp -d)"; mkdir -p "$hubh/skills/foo" "$hubh/skills/bar"
-printf -- '---\nname: foo\nversion: 1.0.0\nglobal_agent_file_hint: Do the foo thing by default. See foo.\n---\n\n# foo\n' > "$hubh/skills/foo/SKILL.md"
+printf -- '---\nname: foo\nversion: 1.0.0\ndescription: Use when foo happens. Then it does the foo thing at length.\n---\n\n# foo\n' > "$hubh/skills/foo/SKILL.md"
 printf -- '---\nname: bar\nversion: 2.0.0\n---\n\n# bar\n' > "$hubh/skills/bar/SKILL.md"
 ( cd "$hubh" && git init -q -b main && GI add -A && GI commit -qm init )
 cons="$(mkcons "foo bar")"
 ( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-{ [ -f "$cons/.agents/GLOBAL_HINTS.md" ] && grep -q "Do the foo thing by default" "$cons/.agents/GLOBAL_HINTS.md" \
-    && ! grep -q '`bar`' "$cons/.agents/GLOBAL_HINTS.md"; } \
-  && ok "GLOBAL_HINTS.md carries the hinted skill's line, not the unhinted one" \
-  || no "GLOBAL_HINTS.md content wrong"
+{ grep -q '^- \*\*foo happens\*\* → load `foo`$' "$cons/.agents/AGENT_RULES.md" \
+    && ! grep -q 'Then it does the foo thing' "$cons/.agents/AGENT_RULES.md" \
+    && ! grep -q '`bar`' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "trigger derives from first sentence only; 'Use when' stripped; body excluded" \
+  || no "derived routing line wrong: $(grep '^- ' "$cons/.agents/AGENT_RULES.md" || true)"
 rm -rf "$cons"
 
-cons="$(mkcons bar)"   # only the UNHINTED skill vendored -> no hints file at all
-( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && ok "no hinted skill vendored -> no GLOBAL_HINTS.md" || no "GLOBAL_HINTS.md should not exist"
+# 20) an over-long first sentence FAILS the sync rather than bloating the index
+hubl="$(mktemp -d)"; mkdir -p "$hubl/skills/foo"
+LONG="Use when doing something whose opening sentence runs on well past any reasonable routing length and simply will not stop before the cap is hit"
+printf -- '---\nname: foo\nversion: 1.0.0\ndescription: %s. Body.\n---\n\n# foo\n' "$LONG" > "$hubl/skills/foo/SKILL.md"
+( cd "$hubl" && git init -q -b main && GI add -A && GI commit -qm init )
+cons="$(mkcons foo)"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubl" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi "derived trigger is" <<<"$out"; } \
+  && ok "over-long derived trigger fails the sync (budget enforced at generation)" \
+  || no "long trigger should fail sync (rc=$rc): $out"
+rm -rf "$cons" "$hubl"
+
+# 21) determinism: two ruled skills, declared in reverse order, produce byte-identical output across runs
+#     and preserve SKILLS declaration order (the curated reading order).
+hubd="$(mktemp -d)"; mkdir -p "$hubd/skills/aaa" "$hubd/skills/zzz"
+printf -- '---\nname: aaa\nversion: 1.0.0\ndescription: Use when aaa fires. Body.\n---\n\n# aaa\n' > "$hubd/skills/aaa/SKILL.md"
+printf -- '---\nname: zzz\nversion: 1.0.0\ndescription: Use when zzz fires. Body.\n---\n\n# zzz\n' > "$hubd/skills/zzz/SKILL.md"
+( cd "$hubd" && git init -q -b main && GI add -A && GI commit -qm init )
+cons="$(mkcons "zzz aaa")"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubd" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+h1="$(sha256sum < "$cons/.agents/AGENT_RULES.md")"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubd" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+h2="$(sha256sum < "$cons/.agents/AGENT_RULES.md")"
+order="$(grep -o 'load `[a-z]*`' "$cons/.agents/AGENT_RULES.md" | tr '\n' ' ')"
+{ [ "$h1" = "$h2" ] && [ "$order" = 'load `zzz` load `aaa` ' ]; } \
+  && ok "index is byte-idempotent and follows SKILLS declaration order" \
+  || no "determinism/order wrong (identical=$([ "$h1" = "$h2" ] && echo y || echo n) order='$order')"
 rm -rf "$cons"
 
-# 20) dropping the hinted skill from SKILLS removes GLOBAL_HINTS.md on re-sync (mirrors skill-dir prune)
-cons="$(mkcons "foo bar")"
-( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ -f "$cons/.agents/GLOBAL_HINTS.md" ] || no "setup: GLOBAL_HINTS.md should exist before drop"
-sed -i 's/^SKILLS=(.*)$/SKILLS=(bar)/' "$cons/scripts/sync-agent-skills.sh"
-( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubh" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
-[ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && ok "dropping the hinted skill removes GLOBAL_HINTS.md" || no "GLOBAL_HINTS.md should be removed after drop"
-rm -rf "$cons" "$hubh"
+# 22) MIGRATION: a stale GLOBAL_HINTS.md is removed, loudly
+cons="$(mkcons "aaa")"
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubd" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+echo "stale" > "$cons/.agents/GLOBAL_HINTS.md"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubd" bash scripts/sync-agent-skills.sh 2>&1)"
+{ [ ! -e "$cons/.agents/GLOBAL_HINTS.md" ] && grep -qi "MIGRATION" <<<"$out"; } \
+  && ok "stale GLOBAL_HINTS.md removed with a migration notice" || no "migration removal/notice missing: $out"
+rm -rf "$cons" "$hubd" "$hubh"
+
+# 23-27) STANDING RULES: the hub's standing-rules.md becomes the "## Standing rules" section.
+hubs="$(mktemp -d)"; mkdir -p "$hubs/skills/aaa"
+printf -- '---\nname: aaa\nversion: 1.0.0\ndescription: Use when aaa fires. Body.\n---\n\n# aaa\n' > "$hubs/skills/aaa/SKILL.md"
+mkrules() { printf '%s\n' "$@" > "$hubs/standing-rules.md"; ( cd "$hubs" && GI add -A && GI commit -qm r ) >/dev/null 2>&1; }
+( cd "$hubs" && git init -q -b main && GI add -A && GI commit -qm init )
+
+# 23) EVERY rule gets its own bullet — not just the first (printf '- %s' over a multi-line string).
+cons="$(mkcons "aaa")"
+mkrules "# Standing rules" "" "## Rules" "" "- Rule one text." "- Rule two text."
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ grep -qx -- '- Rule one text.' "$cons/.agents/AGENT_RULES.md" \
+  && grep -qx -- '- Rule two text.' "$cons/.agents/AGENT_RULES.md" \
+  && grep -q '^## Standing rules$' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "every standing rule is emitted as its own bullet" \
+  || no "standing rules mis-emitted: $(sed -n '/## Standing rules/,/## Which/p' "$cons/.agents/AGENT_RULES.md")"
+
+# 24) A bullet in the file's own maintainer prose (above `## Rules`) must NOT reach consumers.
+mkrules "# Standing rules" "" "- LEAKED example bullet." "" "## Rules" "" "- Rule one text."
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ ! grep -q 'LEAKED' "$cons/.agents/AGENT_RULES.md" && grep -qx -- '- Rule one text.' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "prose bullets above \`## Rules\` are not emitted" || no "prose bullet leaked into AGENT_RULES.md"
+
+# 25) Over the byte cap: fail closed, don't silently bloat every consumer's context.
+mkrules "## Rules" "" "- $(head -c 900 < /dev/zero | tr '\0' 'x')"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi 'max 800' <<<"$out"; } \
+  && ok "over-cap standing rules fail the sync" || no "over-cap not rejected (rc=$rc): $out"
+
+# 26) A rule naming a skill is a ROUTE, not a standing rule — reject it.
+mkrules "## Rules" "" '- Always load `subagent-framework` first.'
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi 'route, not a rule' <<<"$out"; } \
+  && ok "a standing rule naming a skill is rejected" || no "skill-naming rule not rejected (rc=$rc): $out"
+
+# 27) No standing-rules.md at all: routes still render, with no empty Standing-rules section.
+rm -f "$hubs/standing-rules.md"; ( cd "$hubs" && GI add -A && GI commit -qm drop ) >/dev/null 2>&1
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ ! grep -q '## Standing rules' "$cons/.agents/AGENT_RULES.md" && grep -q 'load `aaa`' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "no standing-rules.md → routes only, no empty section" || no "empty-standing-rules shape wrong"
+rm -rf "$cons" "$hubs"
 
 rm -rf "$hub"
 echo "---"

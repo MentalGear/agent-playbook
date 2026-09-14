@@ -2,7 +2,7 @@
 name: subagent-framework
 description: Use when about to write real code, or spawning a subagent. Implementation is delegated to subagents by default, not written in the main loop — this skill defines the two exceptions (small changes; delegation that has repeatedly failed), the task contract including progress checkpoints, choosing the orchestration pattern (single / parallel fan-out / pipeline / adversarial-verify / salvage / repair), and verifying the result before it lands. The scorecard, logging, and tooling detail live in reference.md; the review-panel pattern in the independent-expert-review skill. Project-agnostic — the host repo supplies its concrete gate commands.
 user-invocable: false
-version: 1.2.0
+version: 1.3.0
 requires: [project-gates, agent-access]
 ---
 
@@ -84,6 +84,23 @@ are the signal that matters: that task type needs a better contract, a stronger 
 delegatable (§6) — one-off fallbacks are noise, a pattern is a fix.
 
 ## 2. Roles & model selection
+**Never let the model default.** A sub-agent spawned without an explicit model **inherits the session's
+model**, so a session running your strongest tier silently runs every mechanical pass on it too. That is the
+wrong default in the expensive direction, and it is *invisible* — nothing in the output says which model ran.
+State the tier on every delegation.
+
+| Task shape | Tier | Why |
+| --- | --- | --- |
+| Diagnosis, root-causing, design, review panels — anything where a wrong premise wastes the whole run | **Strongest** | The failure mode is a confident wrong answer, not slowness. A wrong premise doesn't fail loudly; it produces plausible work aimed at the wrong target. |
+| Bulk mechanical edits from a precise spec — repetitive test/doc changes, renames, applying a decided pattern across N files | **Mid** | The judgement was already made in the brief; what's left is execution. |
+| Trivial lookups, inventory, "list every file that…" | **Cheap** | No judgement at all. |
+
+The rule is the *mapping*, not the names — a consumer on Anthropic models reads that as Opus / Sonnet / Haiku.
+
+This table is **asserted, not measured**. The delegation log is what can falsify it — record tier · task
+class · outcome per delegation and read the pattern by class, with an occasional deliberate downshift so the
+mapping can move *down* and not only up. See `reference.md` → **Tier fit**.
+
 Pick by **role**, then map the role to whatever model tier fits your provider:
 - **Orchestrator** — the main loop. Owns design, decomposition, synthesis, and the gate. Use your strongest
   model; delegate *to* it only for a genuinely hard sub-problem.
@@ -103,11 +120,14 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
 3. **Context** — design intent (link the plan), project conventions, the skill(s) to consult.
 4. **Constraints** — the sub-agent's **access scope + isolation** per the **agent-access** skill
    (`read-only` / `propose` / `write:<globs>` / `write`; inline vs sub-agent), resolved against
-   `.agents/access.yaml`; plus any explicit don't-touch.
+   `.agents/access.yaml`; plus any explicit don't-touch. Name what **other agents are holding**: if a
+   sibling delegation is writing files this one might reach for, list them and require this agent to **stop
+   and report** rather than edit outside its own set. Silence here is how two agents clobber one file.
 5. **Acceptance checks** — what "done" means (§3a).
 6. **Output format** — compact structured return; "your final message IS the deliverable." Fixed schema for
    reviews. **Report worse-than-expected first:** the return leads with what came out weaker than hoped,
-   what couldn't be verified, and where the agent is least confident — before the accomplishments. An agent
+   what couldn't be verified, where the agent is least confident, and an explicit **skip list with reasons**
+   — a justified skip is a better outcome than silent partial compliance — before the accomplishments. An agent
    that falsifies its own draft is working correctly, not failing; a uniformly positive report is a smell,
    not a success.
 7. **Budget/parallelism** — background? batch? worktree?
@@ -126,6 +146,12 @@ Pick by **role**, then map the role to whatever model tier fits your provider:
    what make recovery possible when it dies mid-flight (see the **salvage-subagent-transcript** skill);
    an agent with no progress trail leaves you nothing but its workspace diff to reconstruct from. Keep each
    checkpoint short — a few lines, not a narration; the distilled-return rule (§0.5) applies here too.
+10. **Verify the premise before implementing.** Say in the brief that the brief may be wrong: it was written
+    by someone who has not read the code as recently as the agent is about to. If the premise doesn't hold —
+    the function named doesn't exist, the described bug isn't reproducible, the approach is already
+    implemented — the agent should **say so and stop**, not build on it. A worker that silently implements a
+    false premise produces plausible work aimed at nothing, and the gate won't catch it because the code
+    does what the brief asked.
 
 ### 3a. Which gates to run (the acceptance checks)
 Gates are **declared in the host's gate manifest** — see the **project-gates** skill for the schema
@@ -142,6 +168,14 @@ Gates are **declared in the host's gate manifest** — see the **project-gates**
   ~3–5). If they write, give each an **isolated workspace** (a git worktree, a separate clone, or your
   harness's isolation mode), then **join**: merge each one, and **re-run the always-gate on the unified
   tree** before committing (per-workspace green ≠ integrated green).
+- **Serialize on a shared stateful resource.** Worktree isolation solves *file* conflicts; it does nothing
+  for a resource the agents share outside the tree — a dev server, a fixed port, a database, a device, a
+  browser session. Concurrent agents driving one of those don't merely flake: **they measure the wrong
+  program**, because each one's actions land in a process the others are mutating. A false green from that
+  is worse than a crash, because nothing signals it.
+  **To parallelise anyway, split write from verify:** several agents write code with running the suite
+  explicitly *forbidden*, then **one** serial agent verifies the merged result. That keeps the parallelism
+  where it's safe and leaves a single owner of the shared resource.
 - **Pipeline** — produce → verify per item, no barrier, when stages don't need the whole set.
 - **Panel / board review** — N discipline experts in parallel → main loop synthesizes. See the
   **independent-expert-review** skill for the full workflow (sizing, neutral-reviewer contract, finding
@@ -163,6 +197,11 @@ Gates are **declared in the host's gate manifest** — see the **project-gates**
 ## 5. Verify before it lands
 **Gate (binary, observed by the main loop):** the §3a checks for what the task touched. No gate pass → not
 done, regardless of how good it looks or what the agent claims. **Read the diff** before committing.
+
+**Every unverified self-report is a coin flip.** Observed failure classes, each of which read as success in
+the agent's own words: a suite reported green that failed on re-run; a fix reported complete that carried two
+regressions; a mutation proof reported as 0 failures in 12 runs that showed 3 in 8 when measured in the main
+loop. None of these announce themselves — the report looks identical either way.
 
 **Spot-check the load-bearing claims, not a uniform sample.** Identify the handful of claims the
 conclusion actually rests on — the measurement a decision hangs on, the "I verified X" behind a green

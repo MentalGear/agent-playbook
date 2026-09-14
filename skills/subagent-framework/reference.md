@@ -42,6 +42,32 @@ Keep a **delegation log** in the repo (the host repo sets the path).
 - **Rotation:** once the log passes ~50 entries, collapse entries older than a few weeks into a *task-type ×
   outcome* frequency table; keep full entries only for ⚠️/❌ and first-of-type — so "scan the log" stays cheap.
 
+### Tier fit — make the tier table falsifiable
+
+`SKILL.md` §2 maps task shapes to model tiers. That mapping is **asserted, not measured** — nothing in it
+could currently be proven wrong. The log is where it earns or loses its claim, at almost no extra cost: the
+micro-log already carries model/role and outcome; add the **task class** and you have the cell.
+
+**Record per delegation (4 fields, all already at hand):** `tier` · `task class` · `outcome` (gate passed
+first try / N repair rounds / escalated to the main loop) · `repair cause` when there was one.
+
+**Read it by class, never by instance.** "Was this tier right for this delegation?" is unanswerable — §1b
+already says a worker that drifts is *usually* an under-specified brief, so a per-instance tier verdict
+mostly measures brief quality wearing a tier label. The pattern across a class is what carries signal:
+
+- A class that repeatedly needs repair rounds at the cheap tier → **promote** it.
+- A class that always passes first try at the strongest tier → **demotion candidate** (see the probe below).
+- A class whose repair causes cluster on *scope and ambiguity* rather than capability → the brief is the
+  problem, not the tier. Fix §3 before touching §2.
+
+**Budget a deliberate downshift probe.** You only ever observe the tier you chose, never the one you didn't
+— so "the tier I picked worked" is the only thing repeated success can teach you, and the table **ratchets
+upward forever**. Once a class has been stable for several delegations, run one deliberately a tier cheaper
+and see whether it holds. That single counterfactual is what separates a measured mapping from a habit.
+
+A tier table with no downshift probe behind it is a record of what you have been willing to pay, not of
+what the work costs.
+
 ## Tooling map
 - Subagent launch: the agent/task tool's `model`, `subagent_type`, background, and worktree-isolation
   options; a "continue this agent" message to resume the same agent (repair loop) **with its context

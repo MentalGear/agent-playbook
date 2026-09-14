@@ -19,17 +19,17 @@
 #   - Re-sync at the locked pin: run with no args.
 # Overrides: PLAYBOOK_DEFAULT_REF (first-pin ref), ALLOW_NONDEFAULT_PIN=1 (skip ancestry check).
 #
-# Also (re)generates .agents/GLOBAL_HINTS.md from vendored skills' `global_agent_file_hint`
-# frontmatter — short, always-relevant default-posture lines meant for your agent's ALWAYS-LOADED
-# instructions, not just its load-on-demand skills. Import it once: add `@.agents/GLOBAL_HINTS.md` to
-# CLAUDE.md. It lives under .agents/, so the same git-status integrity gate above covers it.
+# Also (re)generates .agents/AGENT_RULES.md by concatenating the agent-rules.md of each vendored skill
+# that ships one — trigger-indexed standing rules meant for your agent's ALWAYS-LOADED instructions, not
+# just its load-on-demand skills. Import it once: add `@.agents/AGENT_RULES.md` to CLAUDE.md. It lives
+# under .agents/, so the same git-status integrity gate above covers it.
 set -euo pipefail
 # shellcheck source=scripts/lib.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib.sh" || { echo "sync: cannot source lib.sh" >&2; exit 3; }
 require_tools git jq
 
 PLAYBOOK_REPO="${AGENT_PLAYBOOK_REPO:-https://github.com/MentalGear/agent-playbook.git}"
-SKILLS=(subagent-framework salvage-subagent-transcript agent-operating-principles avoid-dense-prose solve-by-construction verification-instruments stuck-on-a-problem independent-expert-review end-of-round-report project-gates agent-repo-layout agent-access)
+SKILLS=(subagent-framework salvage-subagent-transcript agent-operating-principles solve-by-construction verification-instruments stuck-on-a-problem independent-expert-review end-of-round-report project-gates agent-repo-layout agent-access)
 # Skills vendored under .agents/skills/ from a DIFFERENT upstream — not synced here and exempt from
 # pruning. IMPORTANT: external skills are OUTSIDE this gate's integrity perimeter — re-sync never
 # touches them, so a malicious edit to their CONTENT is NOT caught by the `git status` CI gate (only
@@ -131,14 +131,22 @@ fi
 
 mkdir -p "$vendor_dir" "$link_dir"
 lock_entries=()
-hint_entries=()   # one entry per skill declaring global_agent_file_hint — see .agents/GLOBAL_HINTS.md below
+rules_rows=()     # "<skill>\x1f<when>" per skill declaring `when:` — assembled into .agents/AGENT_RULES.md
 
 fm_version() {  # read `version:` from a SKILL.md frontmatter
   awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^version:[[:space:]]*//p' | head -1
 }
-fm_hint() {  # read `global_agent_file_hint:` from a SKILL.md frontmatter (raw — no comment-stripping;
-             # the hint text may itself contain '#', same reasoning as `description`)
-  awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" | sed -n 's/^global_agent_file_hint:[[:space:]]*//p' | head -1
+standing_rules() {  # emit the rule lines of the hub's standing-rules.md, if it has any
+  # Only bullets AFTER the `## Rules` heading count, so a bulleted example in that file's own
+  # explanatory prose can never leak into every consumer's always-loaded context.
+  [ -f "$1" ] || return 0
+  awk '/^## Rules[[:space:]]*$/{f=1;next} f' "$1" | sed -n 's/^- //p'
+}
+fm_trigger() {  # derive the routing trigger from `description`'s FIRST sentence — no second field
+  # to drift. Strips the "Use when "/"Use before " lead-in; the generator owns the rest of the line.
+  awk 'NR==1&&/^---/{f=1;next} f&&/^---/{exit} f' "$1" \
+    | sed -n 's/^description:[[:space:]]*//p' | head -1 \
+    | sed -E 's/\. .*$//; s/\.$//; s/^Use (when|before|the moment) //'
 }
 
 # Pre-validate every SKILL exists at the source BEFORE mutating the vendor tree, so a typo in
@@ -176,8 +184,12 @@ for skill in "${SKILLS[@]}"; do
   ver="$(fm_version "$src_skill_dir/SKILL.md")"; ver="${ver:-0.0.0}"
   lock_entries+=("    \"$skill\": \"$ver\"")
 
-  hint="$(fm_hint "$src_skill_dir/SKILL.md")"
-  [ -n "$hint" ] && hint_entries+=("$(printf '%s\x1f%s' "$skill" "$hint")")
+  when="$(fm_trigger "$src_skill_dir/SKILL.md")"
+  if [ -n "$when" ]; then
+    [ "${#when}" -le 120 ] || { echo "ERROR: $skill: derived trigger is ${#when} chars (max 120) — shorten the description's first sentence" >&2; exit 1; }
+    case "$when" in *$'\n'*) echo "ERROR: $skill: description must be a single line" >&2; exit 1 ;; esac
+    rules_rows+=("$(printf '%s\x1f%s' "$skill" "$when")")
+  fi
 
   echo "  ✓ $skill ($ver)"
 done
@@ -201,31 +213,60 @@ fi
 if [ "${#lock_entries[@]}" -gt 0 ]; then
   mapfile -t lock_entries < <(printf '%s\n' "${lock_entries[@]}" | LC_ALL=C sort)
 fi
-if [ "${#hint_entries[@]}" -gt 0 ]; then
-  mapfile -t hint_entries < <(printf '%s\n' "${hint_entries[@]}" | LC_ALL=C sort)
+# --- Write (or remove) .agents/AGENT_RULES.md, the consumer's ALWAYS-LOADED rule index, in two sections:
+#   1. standing rules — verbatim from the hub's standing-rules.md; self-contained, no source skill;
+#   2. routes — one derived trigger per vendored skill, pointing at the skill that owns the rule.
+# Import it once: add `@.agents/AGENT_RULES.md` to CLAUDE.md (see README.md "Agent rules"). Regenerated
+# every sync from the CURRENTLY vendored SKILLS set, so dropping a skill drops its route too — no
+# separate prune step needed.
+rules_text="$(standing_rules "$src/standing-rules.md")"
+if [ -n "$rules_text" ]; then
+  rt_bytes=$(printf '%s' "$rules_text" | wc -c)
+  [ "$rt_bytes" -le 800 ] || { echo "ERROR: standing-rules.md emits $rt_bytes bytes (max 800) — it loads on every turn for every consumer" >&2; exit 1; }
+  printf '%s\n' "$rules_text" | grep -qE '`[a-z0-9-]+`' \
+    && { echo "ERROR: a standing rule names a skill in backticks — that makes it a route, not a rule; move it to the skill's description first sentence" >&2; exit 1; }
 fi
 
-# --- Write (or remove) .agents/GLOBAL_HINTS.md: the concatenated `global_agent_file_hint` of every
-# vendored skill that declares one. Import it into your agent's always-loaded instructions, e.g. add
-# `@.agents/GLOBAL_HINTS.md` to CLAUDE.md — see README.md "How to vendor it into a consuming repo".
-# Regenerated every sync from the CURRENTLY vendored SKILLS set, so dropping a skill (or its hint
-# upstream) removes/updates the corresponding line here too — no separate prune step needed.
-hints_file="$repo_root/.agents/GLOBAL_HINTS.md"
-if [ "${#hint_entries[@]}" -gt 0 ]; then
+rules_file="$repo_root/.agents/AGENT_RULES.md"
+if [ "${#rules_rows[@]}" -gt 0 ] || [ -n "$rules_text" ]; then
   {
-    echo "<!-- Generated by scripts/sync-agent-skills.sh from vendored skills' \`global_agent_file_hint\` -->"
-    echo "<!-- frontmatter — do not edit by hand. Vendored from $PLAYBOOK_REPO @ $resolved_sha. -->"
+    echo "<!-- Generated by scripts/sync-agent-skills.sh from each skill's \`description\` first sentence — do not"
+    echo "     edit by hand. Vendored from $PLAYBOOK_REPO @ $resolved_sha. -->"
     echo
-    echo "# Global agent hints"
+    echo "# Rule index"
     echo
-    for e in "${hint_entries[@]}"; do
-      IFS=$'\x1f' read -r sk hint <<<"$e"
-      echo "- ${hint} (\`${sk}\`)"
+    if [ -n "$rules_text" ]; then
+      echo "## Standing rules"
+      echo
+      echo "These hold on every turn. They are stated in full here and have no source skill."
+      echo
+      # Per line, not per argument: `printf '- %s\n' "$multiline"` bullets only the first line.
+      printf '%s\n' "$rules_text" | sed 's/^/- /'
+      echo
+    fi
+    echo "## Which skill to load, and when"
+    echo
+    echo "Each line pairs a trigger with the skill that owns its rule. When a trigger fires,"
+    echo "**load that skill** — the rule lives there, not here."
+    echo
+    echo "Skip a route whose skill is already loaded this task, unless something changed that its"
+    echo "guidance would act on differently — don't reload on every matching call."
+    echo
+    for row in "${rules_rows[@]}"; do
+      IFS=$'\x1f' read -r sk when <<<"$row"
+      # The generator owns the whole line: a skill author supplies only the trigger phrase, so a
+      # rule, threshold, or caveat cannot be smuggled into always-loaded context.
+      printf -- '- **%s** → load `%s`\n' "$when" "$sk"
     done
-  } > "$hints_file"
-  echo "Wrote $(basename "$hints_file") (${#hint_entries[@]} hint(s))"
+  } > "$rules_file"
+  n_standing=0; [ -n "$rules_text" ] && n_standing=$(printf '%s\n' "$rules_text" | wc -l | tr -d ' ')
+  echo "Wrote $(basename "$rules_file") ($n_standing standing rule(s), ${#rules_rows[@]} routes)"
 else
-  rm -f "$hints_file"
+  rm -f "$rules_file"
+fi
+if [ -e "$repo_root/.agents/GLOBAL_HINTS.md" ]; then
+  rm -f "$repo_root/.agents/GLOBAL_HINTS.md" || true
+  echo "MIGRATION: removed superseded .agents/GLOBAL_HINTS.md — replace '@.agents/GLOBAL_HINTS.md' with '@.agents/AGENT_RULES.md' in your CLAUDE.md" >&2
 fi
 
 # --- Write the lockfile atomically (pin + per-skill version; NO hashes — git is the content check) -
