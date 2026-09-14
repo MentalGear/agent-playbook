@@ -335,7 +335,9 @@ out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubv" bash scripts/sync-agent-skills.s
   && ok "hub older than the script warns but succeeds" || no "older-hub path wrong (rc=$rc): $out"
 rm -rf "$cons" "$hubv"
 
-# 32-33) TRIGGER COLLISIONS in a consumer's vendored set: warn, never fail.
+# 32-33) TRIGGER COLLISIONS are NOT a sync-time concern — the check belongs to validate-skill, where
+# the maintainer who can reword a description sees it. A consumer cannot fix hub wording, so warning
+# them on every sync is unactionable noise. Asserted, not merely deleted, so re-adding it is deliberate.
 hubc="$(mktemp -d)"; mkdir -p "$hubc/skills/alpha" "$hubc/skills/beta" "$hubc/skills/gamma" "$hubc/scripts"
 printf -- '---\nname: alpha\nversion: 1.0.0\ndescription: Use when contributing a skill back to the playbook hub. Body.\n---\n\n# alpha\n' > "$hubc/skills/alpha/SKILL.md"
 printf -- '---\nname: beta\nversion: 1.0.0\ndescription: Use when reviewing a skill proposed to the playbook hub. Body.\n---\n\n# beta\n' > "$hubc/skills/beta/SKILL.md"
@@ -344,12 +346,13 @@ cp "$SRC/sync-agent-skills.sh" "$hubc/scripts/"
 ( cd "$hubc" && git init -q -b main && GI add -A && GI commit -qm init )
 cons="$(mkcons "alpha beta gamma")"
 out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubc" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
-cw="$(grep -A3 "near-duplicate routing triggers" <<<"$out" || true)"
-{ [ $rc -eq 0 ] && [ -n "$cw" ] && grep -q alpha <<<"$cw" && grep -q beta <<<"$cw" && [ -f "$cons/.agents/AGENT_RULES.md" ]; } \
-  && ok "colliding triggers warn without failing the consumer's sync" \
-  || no "consumer collision warn wrong (rc=$rc): $out"
-grep -q "gamma" <<<"$(grep 'near-duplicate' -A3 <<<"$out" | grep '↔' || true)" \
-  && no "gamma flagged despite a distinct trigger" || ok "distinct trigger not flagged in the consumer's set"
+{ [ $rc -eq 0 ] && ! grep -qi "near-duplicate" <<<"$out"; } \
+  && ok "sync stays silent on colliding triggers (that check is validate-skill's)" \
+  || no "sync should not warn on collisions (rc=$rc): $out"
+# …and the routes are still generated for every skill, collision or not.
+n_routes=$(grep -c '→ load `' "$cons/.agents/AGENT_RULES.md" 2>/dev/null || echo 0)
+[ "$n_routes" -eq 3 ] && ok "all routes still emitted when triggers collide" \
+  || no "expected 3 routes, got $n_routes"
 rm -rf "$cons" "$hubc"
 
 rm -rf "$hub"

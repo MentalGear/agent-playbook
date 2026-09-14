@@ -259,22 +259,10 @@ if [ -n "$rules_text" ]; then
     && { echo "ERROR: a standing rule names a skill in backticks — that makes it a route, not a rule; move it to the skill's description first sentence" >&2; exit 1; }
 fi
 
-# Warn (don't fail) on near-duplicate triggers in the set THIS consumer vendored. Two triggers that
-# read alike mean the agent loads whichever it saw first and the other skill never fires. Not fatal:
-# the colliding text lives in the hub, which the consumer does not control, so failing their build
-# over it would punish the party who cannot fix it. They CAN act on it by dropping one from SKILLS.
-if [ "${#rules_rows[@]}" -gt 1 ]; then
-  collisions="$(for row in "${rules_rows[@]}"; do
-      IFS=$'\x1f' read -r sk when <<<"$row"; printf '%s\t%s\n' "$sk" "$when"
-    done | trigger_collisions)"
-  if [ -n "$collisions" ]; then
-    echo "WARN: near-duplicate routing triggers — the agent may load the wrong skill:" >&2
-    while IFS=$'\t' read -r score a b; do
-      [ -n "$score" ] && echo "        $a ↔ $b (${score} word overlap)" >&2
-    done <<<"$collisions"
-    echo "      Drop one from SKILLS=(…), or ask the hub to sharpen a description's first sentence." >&2
-  fi
-fi
+# NOTE: trigger-collision detection deliberately does NOT run here. It lives in validate-skill.sh,
+# at review time, where the maintainer who can reword a description sees it. A consumer cannot fix
+# hub-authored wording, so warning them every sync is noise they can only mute by dropping a skill.
+# (trigger_collisions() is still in lib.sh — the hub's validator uses it.)
 
 rules_file="$repo_root/.agents/AGENT_RULES.md"
 if [ "${#rules_rows[@]}" -gt 0 ] || [ -n "$rules_text" ]; then
