@@ -47,6 +47,7 @@ scripts/
   build-registry.sh                     # regenerate registry.yaml from skill frontmatter
   validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
   update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
+  measure-index-overhead.sh             # instrument: is the route index earning its always-loaded context?
   setup.sh                              # one-time: register the registry.yaml regenerate-on-conflict driver
 .github/workflows/ci.yml                # registry freshness · validate-skill · test harnesses · shellcheck
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
@@ -155,6 +156,14 @@ the skill it points at.
 Import it once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` — and it never needs touching again; new skills,
 edits, and removals all arrive via the normal re-sync + pin bump. Line order follows your `SKILLS=(…)`
 declaration order, so the index reads as a workflow.
+
+> **Known limitation — the routes section is not justified by context budget.** Claude Code preloads every
+> skill's `name` + `description` natively, so the routes duplicate what that harness already has: measured
+> at 11 skills they add **+26%** to always-loaded context and save nothing
+> (`scripts/measure-index-overhead.sh`). They are for harnesses *without* native preloading, where the
+> index is the only channel. The **standing rules are unaffected** — no skill description carries them, so
+> they have no alternative channel at any size. See
+> [the decision record](docs/decisions/2026-09-14-routing-index-evidence.md) for the kill criteria.
 
 Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at **120 characters**; an
 over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an import
