@@ -24,8 +24,6 @@ skills/
                                         #   an isolated worktree · benchmarks as committed instruments
   salvage-subagent-transcript/SKILL.md  # a subagent went stale/crashed/returned junk: harvest the
                                         #   workspace diff + transcript, then resume / harvest / discard
-  avoid-dense-prose/SKILL.md            # one concern per paragraph or bullet — don't collapse a
-                                        #   claim, a caveat, an example, and a next step into one block
   independent-expert-review/SKILL.md    # neutral multi-discipline review panels: sizing, the reviewer
                                         #   contract, finding schema, synthesis + per-finding verification
   project-gates/SKILL.md                # the gate-manifest schema (categories, triggers, flow) that
@@ -40,6 +38,8 @@ skills/
   end-of-round-report/SKILL.md          # how to hand back a round's conclusion (rule + heading; outcome-first)
   stuck-on-a-problem/SKILL.md           # on the SECOND instance of a defect shape, enumerate the class,
                                         #   fix all, guard it; step up a level instead of patching again
+standing-rules.md                       # curated always-loaded rules (verbatim, no skill names) — the
+                                        #   "## Standing rules" half of the generated AGENT_RULES.md
 registry.yaml                           # published index (generated; per-skill version, sha256, requires, …)
 scripts/
   lib.sh                                # shared helpers (require_tools, jq lockfile readers, skill_dir_hash)
@@ -115,13 +115,25 @@ is the canonical vendoring tool; copying files by hand drifts and loses the pin.
    > delegation in `docs/subagent-log/`.** For neutral review panels use the **`independent-expert-review`**
    > skill; persist rounds dated in `docs/research/` and verify with the manifest's gates.*
 
-### Agent rules — the generated routing index
+### Agent rules — the generated rule index
 
 Most skills are **load-on-demand**: the agent loads one when its `description` matches the situation. Some
 rules need to be visible *before* the agent would think to look for a skill about them.
 
-`sync-agent-skills.sh` therefore generates **`.agents/AGENT_RULES.md`**: one line per vendored skill,
-pairing a trigger with the skill that owns the rule.
+`sync-agent-skills.sh` therefore generates **`.agents/AGENT_RULES.md`** in two sections.
+
+**`## Standing rules`** — self-contained instructions that hold on every turn, emitted verbatim from the
+hub's [`standing-rules.md`](standing-rules.md) (only the bullets under its `## Rules` heading; everything
+above it is maintainer documentation). **A standing rule may not name a skill**, and sync rejects one that
+does: a line pointing at a skill is a *route*, and a route belongs in the section below, where the
+generator owns its format so a compressed rule cannot drift from the skill it came from. A standing rule
+has no source skill, so it has nothing to drift from — that is what makes it safe to state in full.
+The section is capped at **800 bytes** total; it loads on every turn for every consumer, and the
+predecessor mechanism (one hint field per skill) grew tenfold in two commits because each author saw only
+their own line. One curated file has a single owner and a visible total.
+
+**`## Which skill to load, and when`** — one line per vendored skill, pairing a trigger with the skill that
+owns the rule.
 
 ```markdown
 - **about to write real code, or spawning a subagent** → load `subagent-framework`

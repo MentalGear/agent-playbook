@@ -2,7 +2,7 @@
 name: solve-by-construction
 description: Use when choosing between designs, or about to land a guard, check, or assert. Also when deciding where a fix belongs. Runs the loop deconstruct → construct → check against prior art. Prefer designs that make a failure mode structurally impossible over designs that defend against it at runtime — climb the ladder (guard at the site → validate at a boundary → route through an existing checkpoint → make it unrepresentable) instead of patching where the defect surfaced; run the deconstruction exercise to test whether the current form is the truest one; apply the elegance test to tell real elimination from a guard in disguise; re-run the whole check on the plan before building; and sweep existing code once an invariant lands. Project-agnostic.
 user-invocable: false
-version: 1.0.0
+version: 1.0.1
 ---
 
 # Solve by construction — eliminate the failure mode, don't defend against it
@@ -37,15 +37,15 @@ record that as a negative (§1 of **agent-operating-principles**) so the next pa
 
 ## 1. Climb the ladder before you land a guard
 
-**Never land a guard at the defect site without first checking the rungs above it.** The grades rank the
-fix you actually land — 1 is best:
+**Never land a guard at the defect site without first checking the rungs above it.** The rungs are ordered:
+a higher rung leaves fewer ways for the defect to come back.
 
-- **Rung 0 — guard at the site** (grade 3): a check after the fact, where the defect surfaced.
-- **Rung 1 — validate at a boundary** (grade 2): check once at a type/parse boundary, so downstream sites
+- **Rung 0 — guard at the site**: a check after the fact, where the defect surfaced.
+- **Rung 1 — validate at a boundary**: check once at a type/parse boundary, so downstream sites
   can't reintroduce it.
-- **Rung 2 — route through an existing checkpoint** (grade 2): the value already passes a boundary that
+- **Rung 2 — route through an existing checkpoint**: the value already passes a boundary that
   could own this constraint — route through it and add **no new check at all**.
-- **Rung 3 — make it unrepresentable** (grade 1): a substrate or representation choice removes the defect
+- **Rung 3 — make it unrepresentable**: a substrate or representation choice removes the defect
   class entirely.
 
 **Not every constraint has a rung 3.** When the constraint's own definition is itself mutable or replicated

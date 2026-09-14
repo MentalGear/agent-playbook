@@ -252,6 +252,47 @@ out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubd" bash scripts/sync-agent-skills.s
   && ok "stale GLOBAL_HINTS.md removed with a migration notice" || no "migration removal/notice missing: $out"
 rm -rf "$cons" "$hubd" "$hubh"
 
+# 23-27) STANDING RULES: the hub's standing-rules.md becomes the "## Standing rules" section.
+hubs="$(mktemp -d)"; mkdir -p "$hubs/skills/aaa"
+printf -- '---\nname: aaa\nversion: 1.0.0\ndescription: Use when aaa fires. Body.\n---\n\n# aaa\n' > "$hubs/skills/aaa/SKILL.md"
+mkrules() { printf '%s\n' "$@" > "$hubs/standing-rules.md"; ( cd "$hubs" && GI add -A && GI commit -qm r ) >/dev/null 2>&1; }
+( cd "$hubs" && git init -q -b main && GI add -A && GI commit -qm init )
+
+# 23) EVERY rule gets its own bullet — not just the first (printf '- %s' over a multi-line string).
+cons="$(mkcons "aaa")"
+mkrules "# Standing rules" "" "## Rules" "" "- Rule one text." "- Rule two text."
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ grep -qx -- '- Rule one text.' "$cons/.agents/AGENT_RULES.md" \
+  && grep -qx -- '- Rule two text.' "$cons/.agents/AGENT_RULES.md" \
+  && grep -q '^## Standing rules$' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "every standing rule is emitted as its own bullet" \
+  || no "standing rules mis-emitted: $(sed -n '/## Standing rules/,/## Which/p' "$cons/.agents/AGENT_RULES.md")"
+
+# 24) A bullet in the file's own maintainer prose (above `## Rules`) must NOT reach consumers.
+mkrules "# Standing rules" "" "- LEAKED example bullet." "" "## Rules" "" "- Rule one text."
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ ! grep -q 'LEAKED' "$cons/.agents/AGENT_RULES.md" && grep -qx -- '- Rule one text.' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "prose bullets above \`## Rules\` are not emitted" || no "prose bullet leaked into AGENT_RULES.md"
+
+# 25) Over the byte cap: fail closed, don't silently bloat every consumer's context.
+mkrules "## Rules" "" "- $(head -c 900 < /dev/zero | tr '\0' 'x')"
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi 'max 800' <<<"$out"; } \
+  && ok "over-cap standing rules fail the sync" || no "over-cap not rejected (rc=$rc): $out"
+
+# 26) A rule naming a skill is a ROUTE, not a standing rule — reject it.
+mkrules "## Rules" "" '- Always load `subagent-framework` first.'
+out="$(cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh 2>&1)"; rc=$?
+{ [ $rc -ne 0 ] && grep -qi 'route, not a rule' <<<"$out"; } \
+  && ok "a standing rule naming a skill is rejected" || no "skill-naming rule not rejected (rc=$rc): $out"
+
+# 27) No standing-rules.md at all: routes still render, with no empty Standing-rules section.
+rm -f "$hubs/standing-rules.md"; ( cd "$hubs" && GI add -A && GI commit -qm drop ) >/dev/null 2>&1
+( cd "$cons" && AGENT_PLAYBOOK_SRC="$hubs" bash scripts/sync-agent-skills.sh >/dev/null 2>&1 )
+{ ! grep -q '## Standing rules' "$cons/.agents/AGENT_RULES.md" && grep -q 'load `aaa`' "$cons/.agents/AGENT_RULES.md"; } \
+  && ok "no standing-rules.md → routes only, no empty section" || no "empty-standing-rules shape wrong"
+rm -rf "$cons" "$hubs"
+
 rm -rf "$hub"
 echo "---"
 echo "sync: $pass passed, $failed failed."
