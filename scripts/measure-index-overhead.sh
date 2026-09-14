@@ -32,18 +32,26 @@ fi
 [ -f "$idx" ] || { echo "ERROR: no AGENT_RULES.md to measure (pass one as \$1)" >&2; exit 1; }
 
 idx_bytes=$(wc -c < "$idx")
+# Claude Code's docs say block-level HTML comments in CLAUDE.md are STRIPPED before injection, so the
+# provenance header probably costs nothing in context. "Probably": the docs state this for CLAUDE.md
+# itself and do not say whether it extends to `@`-imported files. Report the file both ways rather
+# than pick one and be quietly wrong — https://code.claude.com/docs/en/memory.md
+comment=$(awk '/^<!--/,/-->/' "$idx" | wc -c)
+ctx_bytes=$((idx_bytes - comment))
 standing=$(awk '/^## Standing rules/{f=1;next} /^## /{f=0} f&&/^- /' "$idx" | wc -c)
-routes=$((idx_bytes - standing))
+routes=$((ctx_bytes - standing))
 
 printf 'Vendored skills:                         %d\n' "$n"
 printf 'Native preload (name + description):     %d bytes\n' "$desc_bytes"
-printf 'Generated index total:                   %d bytes\n' "$idx_bytes"
+printf 'Generated index on disk:                 %d bytes\n' "$idx_bytes"
+printf '  provenance comment (likely stripped):  %d bytes\n' "$comment"
+printf 'Index reaching context:                  %d bytes\n' "$ctx_bytes"
 printf '  of which standing rules:               %d bytes\n' "$standing"
 printf '  of which routes + scaffolding:         %d bytes\n' "$routes"
 echo
 echo "In a harness that preloads descriptions (e.g. Claude Code):"
-printf '  the routes are ADDITIVE overhead:       +%d%% on always-loaded context\n' "$((idx_bytes * 100 / desc_bytes))"
+printf '  the routes are ADDITIVE overhead:       +%d%% on always-loaded context\n' "$((ctx_bytes * 100 / desc_bytes))"
 echo "  the standing rules are NOT — no skill description carries them, so they have no other channel."
 echo
 echo "In a harness that does NOT preload descriptions:"
-printf '  the index is the only channel and costs %d bytes instead of %d.\n' "$idx_bytes" "$desc_bytes"
+printf '  the index is the only channel and costs %d bytes instead of %d.\n' "$ctx_bytes" "$desc_bytes"

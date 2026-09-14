@@ -171,13 +171,14 @@ Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at *
 over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an import
 mechanism need different wiring — not implemented here.)
 
-Both also **warn on near-duplicate triggers**, the most-cited cause of wrong-skill selection: if two
-triggers read alike, the agent loads whichever it saw first and the other skill never fires. The measure
-is *lexical* — overlap of content words, stopwords dropped — so it catches a trigger written by copying a
-neighbour's and tweaking it, and it will **not** catch two triggers that mean the same thing in different
-words. That half is still a human judgment at review. It warns rather than fails: two genuinely paired
-skills (the propose/review halves of one workflow) legitimately share vocabulary, and a consumer cannot
-fix hub-authored wording anyway.
+`validate-skill.sh` additionally **warns on near-duplicate triggers** — at review time only, where the
+maintainer who can reword a description sees it. (`sync` deliberately stays silent: a consumer cannot fix
+hub-authored wording, so warning them every sync is noise they could only mute by dropping a skill.)
+
+The measure is *lexical* — overlap of content words, stopwords dropped — so it catches a trigger written
+by copying a neighbour's and tweaking it, and it will **not** catch two triggers that mean the same thing
+in different words. That half stays a human judgment. It warns rather than fails: two genuinely paired
+skills (the propose/review halves of one workflow) legitimately share vocabulary.
 
 ### Upgrading — re-copy the script when you bump the pin
 
