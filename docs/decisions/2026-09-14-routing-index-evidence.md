@@ -43,6 +43,17 @@ Generated index total:                   1934 bytes
 did not already have.** Budget isolation was the weakest of the three justifications and it is the one
 that measured false. Committed as a script, not a number in prose, so it stays checkable as the hub grows.
 
+> **Amended 2026-09-15 — the figures above are superseded; kept as the record of what was measured then.**
+> Two corrections, neither of which rescues budget isolation:
+> 1. **The measurement over-counted.** Claude Code strips block-level HTML comments before injection, so
+>    the 235-byte provenance header likely never reaches context. Dropping the section blurb removed
+>    another 82 bytes. Current figures: index 1852 bytes on disk, **1617 reaching context**, routes
+>    **+22%**, not +26%.
+> 2. **"Returns nothing the harness did not already have" does not follow.** That inference is retracted
+>    in `2026-09-14-routing-index-prior-art.md`: verbatim restatement measurably improves model
+>    performance, so redundancy is not self-evidently waste. The *budget* claim still measures false —
+>    the routes are additive, not a saving — but the leap from "duplicate" to "worthless" was unsupported.
+
 ### The standing-rules half is unaffected
 
 This finding does **not** touch the standing rules. No skill description carries them — they have no other

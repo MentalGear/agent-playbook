@@ -157,15 +157,25 @@ the skill it points at.
 
 Import it once — `@.agents/AGENT_RULES.md` in `CLAUDE.md` — and it never needs touching again; new skills,
 edits, and removals all arrive via the normal re-sync + pin bump. Line order follows your `SKILLS=(…)`
-declaration order, so the index reads as a workflow.
+declaration order.
 
-> **Known limitation — the routes section is not justified by context budget.** Claude Code preloads every
-> skill's `name` + `description` natively, so the routes duplicate what that harness already has: measured
-> at 11 skills they add **+26%** to always-loaded context and save nothing
-> (`scripts/measure-index-overhead.sh`). They are for harnesses *without* native preloading, where the
-> index is the only channel. The **standing rules are unaffected** — no skill description carries them, so
-> they have no alternative channel at any size. See
-> [the decision record](docs/decisions/2026-09-14-routing-index-evidence.md) for the kill criteria.
+**The list is flat, deliberately.** Grouping routes under workflow-phase headings was probed by assigning
+all 13 skills a phase: **7 broke**, because these skills are situation-triggered and situations recur
+across phases (`solve-by-construction` fires while designing, while building *and* while fixing;
+`project-gates` names two phases in one sentence). Grouping would have *hidden* skills — filing
+`verification-instruments` under "before it lands" means an agent filing a defect never sees it. A skill
+with several entry points appears once in a flat list without being misrepresented.
+[The probe](docs/decisions/2026-09-15-phase-grouping-rejected.md) records the full assignment.
+
+> **Known limitation — the routes are not justified by context budget.** Claude Code preloads every
+> skill's `name` + `description` natively, so the routes restate what that harness already has: measured
+> at 11 skills they add **+22%** to always-loaded context (`scripts/measure-index-overhead.sh`). Whether
+> that restatement is *useless* is genuinely unresolved — verbatim repetition is known to improve model
+> performance, though the effect largely disappears with extended thinking, which is what Claude Code
+> ships; see [the prior-art record](docs/decisions/2026-09-14-routing-index-prior-art.md). The routes'
+> firm justification is harnesses *without* native preloading, where the index is the only channel.
+> The **standing rules are unaffected** — no skill description carries them, so they have no alternative
+> channel at any size.
 
 Both `sync-agent-skills.sh` and `validate-skill.sh` cap the derived trigger at **120 characters**; an
 over-long opener fails rather than silently bloating every consumer's context. (Harnesses without an import
