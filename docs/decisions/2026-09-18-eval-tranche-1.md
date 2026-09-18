@@ -89,6 +89,28 @@ above was checked against its trace, and the item that could not be was removed 
 - Behaviour with **extended thinking on**, which is what Claude Code ships. The prior-art record says
   the restatement benefit collapses there; the behaviour benefit measured here may or may not.
 
+## Addendum — the delegation probe (same day)
+
+Two tranche-1 items scored zero Agent calls under B: sf01 (build a feature) and ier01 (review panel) —
+the two rules that require spawning agents. A six-run probe (Sonnet at 25 and 60 turns, Opus at 60; arm
+B only) settled what that meant. Full table in the test repo's `RESULTS.md`.
+
+- **The panel rule lands.** ier01's zero was single-run variance: the identical configuration spawned a
+  panel on the repeat, and every probe run did (3, 3, 5 reviewers). Nothing to fix.
+- **Delegate-by-default is followed — via its own exception.** No configuration delegated the build,
+  and turn budget made no difference. But every model *engaged* the rule and invoked §1a in its own
+  words — Sonnet: *"~100 lines… under the 'small stuff' exception… so I'll implement"*; Opus: *"§1a
+  (small stuff) applies — I'm implementing."* Opus's Agent calls were reviewers, not implementers. The
+  rule works as written; **§1a's "<~15 min / <~100 lines" is judged to cover a rate limiter with wiring
+  and tests.** That is a threshold-calibration decision for the maintainer, and it means the eval's
+  label ("non-trivial, should delegate") was the eval's judgment, not the skill's.
+- **Cost scales with tier.** Opus loaded six skills on one build task and timed out at 600 s; 119 tool
+  calls on the panel task. The stronger model reads the index more thoroughly and loads more.
+
+**Finding 4, then:** decide whether "~100 lines" is the delegation threshold you want. If a ~100-line
+feature with tests should be delegated, §1a needs a tighter bound or a different criterion — the models
+are applying the one that is there.
+
 ## Decision
 
 The playbook's content demonstrably changes behaviour in the prescribed direction on the tasks it is
