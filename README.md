@@ -139,7 +139,7 @@ their own line. One curated file has a single owner and a visible total.
 owns the rule.
 
 ```markdown
-- **about to write real code, or spawning a subagent** → load `subagent-framework`
+- **deciding whether to delegate a piece of work, or spawning a subagent** → load `subagent-framework`
 ```
 
 **The trigger is derived, not declared.** It is `description`'s **first sentence**, minus the `Use when`

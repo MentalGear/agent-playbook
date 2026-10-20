@@ -18,6 +18,16 @@ repo carries it. An entry without one is safe to adopt by re-syncing and nothing
 
 ---
 
+## 2026-10-20 — `129dd89` `subagent-framework` 1.4.0: trigger names the decision
+
+- The opener changed from *"about to write real code"* to *"deciding whether to delegate a piece of
+  work, or spawning a subagent."* The old wording is true of a variable rename, so the skill (17.5 KB,
+  the hub's largest) loaded on trivial edits and as an extra on most code-touching tasks.
+- Measured, concurrent before/after on 108 paired runs: over-loads fixed in 16, introduced in 0
+  (p = 3×10⁻⁵); spurious loads 6 → 0; recall 94% → 99%. Record:
+  `docs/decisions/2026-09-18-selection-tranche-1.md`.
+- Your generated `AGENT_RULES.md` route line changes with it. No consumer action — re-sync.
+
 ## 2026-09-14 — `96f7371` Routing-index cost measured
 
 - Adds `scripts/measure-index-overhead.sh`, an instrument: is the route index earning its always-loaded
