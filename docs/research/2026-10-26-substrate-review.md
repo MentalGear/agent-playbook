@@ -1,9 +1,14 @@
 # Multi-agent substrate plan — adversarial board, 2026-10-26
 
-Board on the plan `docs/decisions/2026-10-26-multi-agent-substrate.md` (v1, reproduced in the appendix),
-run under `independent-expert-review`. Five reviewers, one lens each: distributed systems, security,
-multi-agent systems, feasibility and QA, docs-as-code. Identical scope, read-only, fresh agents, strongest
-tier.
+Board on the multi-agent substrate plan, run under `independent-expert-review`. Five reviewers per run, one
+lens each: distributed systems, security, multi-agent systems, feasibility and QA, docs-as-code. Identical
+scope, read-only, fresh agents each run, strongest tier.
+
+| Version | Where | Reviewed in |
+|---|---|---|
+| v1 | never merged; text in the appendix (commit `58d61ce`, no longer on a branch) | run 1 |
+| v2 | commit `49228ce`, `docs/decisions/2026-10-26-decision-records-and-deferred-coordination.md` | run 2 |
+| v3 | `docs/decisions/2026-10-26-decision-records-and-guide-route.md` and `docs/decisions/2026-10-26-deferred-coordination-layer.md` | run 3 |
 
 **Pass rule, set before run 1:** a run is clean when no BLOCKER or MAJOR finding survives verification in
 the main loop. The plan passes after 2 consecutive clean runs, each with fresh reviewers. Stop and report
@@ -16,11 +21,11 @@ the cited papers. They are grouped by theme; the number of reviewers who raised 
 
 | Theme | Sev | Raised by | Verified finding | Disposition in v2 |
 |---|---|---|---|---|
-| Measurement last | BLOCKER | multi-agent, feasibility | The rollout measured last and tested nothing it built; step 6 could not tell success from failure. The coordination problem was asserted, not observed. | v2 §1 classifies each problem as observed or not; only the observed one (drift) gets a mechanism; every step has a prediction and a revert or kill criterion. |
+| Measurement last | BLOCKER | multi-agent, feasibility | The rollout measured last and tested nothing it built; step 6 could not tell success from failure. The coordination problem was asserted, not observed. | v2 §1 classifies each problem as observed or not; only the observed one (drift) gets a mechanism; every step has a prediction and a revert or kill criterion (false for step 1, see run 2). |
 | Merge on green | BLOCKER | security | "Merged when its checks are green" contradicts `review-skill-proposal` lines 14–19 (a model never self-accepts). | v2 §7: a human merges every step. |
-| Identity | BLOCKER | security, distributed, docs-as-code, feasibility | Git author and trailers are unauthenticated. The proposing commit itself named the user as author for model-written work. A namespace keyed on the model id is shared by every parallel instance. | v2 §3: the human merge is the only authenticated signal relied on. The commit was re-authored. Namespaces deferred, with the per-instance constraint recorded. |
+| Identity | BLOCKER | security, distributed, docs-as-code, feasibility | Git author and trailers are unauthenticated. The proposing commit itself named the user as author for model-written work. A namespace keyed on the model id is shared by every parallel instance. | v2 §3: the human merge is the only authenticated signal relied on (false here, see run 2). The commit was re-authored. Namespaces deferred, with the per-instance constraint recorded. |
 | Leases | BLOCKER | distributed, feasibility | A lease written as a git event is invisible until merged and has no fencing authority. | Deferred; constraint recorded in v2 §6. |
-| Evidence misread | MAJOR | multi-agent, docs-as-code | Gloaguen: +2.4% (not significant), not "about 4%"; the overview finding was omitted and contradicts the plan's architecture page. CodeCompass: instruction did not make the agent use the tool; enforcement did. MAST +15.6% is one ChatDev case study. Google: the 39–70% loss on sequential tasks was omitted. | v2 §2 corrected; architecture page dropped from the candidate in §5. |
+| Evidence misread | MAJOR | multi-agent, docs-as-code | (Partly wrong, see run 2.) Gloaguen: +2.4% (not significant), not "about 4%"; the overview finding was omitted and contradicts the plan's architecture page. CodeCompass: instruction did not make the agent use the tool; enforcement did. MAST +15.6% is one ChatDev case study. Google: the 39–70% loss on sequential tasks was omitted. | v2 §2 corrected; architecture page dropped from the candidate in §5. |
 | Decision model vs guide | MAJOR | docs-as-code, multi-agent | Append-only records with a free-text `decides:` conflicted with the guide's decisions index and with the hub's own in-place amendments; no `proposed → accepted` path without an edit; one subject per record did not fit multi-decision records. | v2 §3: superseded status is derived, merge is acceptance, several subjects per record, controlled subject list, mapping to guide principles 3 and 6 stated. Strict append-only dropped. |
 | "Code wins" | MAJOR | security, multi-agent, docs-as-code, feasibility | Undefined for non-code decisions; lets a regression override a decision silently. | v2 §3: stop and report the conflict to a human. |
 | Records as an injection channel | MAJOR | security | Agent-written records read by later agents carry instructions. | v2 §3: records are evidence, not instructions. |
@@ -28,7 +33,7 @@ the cited papers. They are grouped by theme; the number of reviewers who raised 
 | Overlaps with the guide | MAJOR | docs-as-code, feasibility | The guide already covers several writers (`cleanup-playbook.md`, "Ground rules for delegating"); hub and guide contradict on `docs/research/`; "resolve by pointing" settles copies, not contradictions; `agent-repo-layout` line 95 gives decisions a third home. | v2 §4 inventory with a ruling per overlap; line 95 corrected in step 2. |
 | Unpinned, unreachable route | MAJOR | security, docs-as-code | Vendored skills run offline; the guide has no tag. | v2 §4: pinned SHA; offline-needed rules stay in the hub. |
 | Checks cannot reach consumers | MAJOR | docs-as-code, feasibility | Only skills and the sync script are distributed; `ci.yml` has no link or reference check. | v2 §3 applies to the hub only; distribution decided after the revert window. |
-| Generated views in parallel work | MAJOR | distributed, docs-as-code | A committed view conflicts on every parallel merge; a gitignored one hides changes from review. | Committed, with the `registry.yaml` regenerate-on-conflict driver. |
+| Generated views in parallel work | MAJOR | distributed, docs-as-code | A committed view conflicts on every parallel merge; a gitignored one hides changes from review. | Committed, with the `registry.yaml` regenerate-on-conflict driver (wrong, see run 2). |
 | Checks across pull requests | MAJOR | distributed | Two valid pull requests can together violate a uniqueness check; `ci.yml` has no `merge_group`. | Recorded as a known gap in v2 §3. |
 | Protocol | MAJOR | multi-agent, docs-as-code, feasibility | `blocked` is not an A2A state, `canceled` missing, dead agents unrepresentable; claimed fields dropped the §3.6 return contract; observed fields collapse under recursion; duplicates the delegation log; the debate exception breaks panel independence. | Protocol deferred; constraints recorded in v2 §6. |
 | Triggers, reference hashes, work-state log | MAJOR | all five | Evaluators absent on most hosts; idempotency races; hashes flag every edited target; event order from self-reported clocks; "a log cannot drift" is false when an agent dies after claiming. | Deferred; constraints recorded in v2 §6. |
@@ -42,6 +47,49 @@ the cited papers. They are grouped by theme; the number of reviewers who raised 
 **What the reviewers credited:** evidence graded by strength; derived views never authoritative; claimed
 and observed fields separated; heartbeats kept out of git; the Dolt deferral with a reopen condition; the
 candid open-risk list; the repository-internal figures, which checked out.
+
+## Run 2 (v2) — not clean
+
+Verdicts: security and feasibility unsound or blocked; distributed systems, multi-agent and docs-as-code
+sound with fixes. Verified in the main loop: the merge-driver failure was reproduced in a scratch clone;
+CodeCompass and MAST were re-read in the papers; the brief contract in `subagent-framework` §3 item 2 and
+the cited skill and guide lines were checked.
+
+**Run-1 dispositions that run 2 showed wrong.** Run 1's verification missed these:
+
+- **CodeCompass was inverted by the run-1 "correction".** The paper did not test enforcement; it proposes it
+  as future work. A plain instruction left the tool unused in 58% of trials; a checklist placed at the end
+  of the prompt reached 31 of 31 on one task group.
+- **MAST's 40.6% is not "a verification step".** It came from a topology change on top of prompt changes
+  (appendix H, Table 5); HumanEval moved 89.6% to 91.5%, and the authors call the gains not substantial.
+- **The `registry.yaml` merge driver regenerates from the working tree,** which holds only one side during
+  the merge. Reproduced: two branches each edit a different skill, the merge exits 0, and the merged
+  `registry.yaml` carries a stale hash. v2 proposed reusing it. This is also a defect in the hub as it
+  stands, outside this plan.
+- **"The human merge is the only authenticated signal" was false here.** Agents in this setup act under the
+  owner's GitHub account and `main` is unprotected, so a merge by an agent looks like the owner's.
+- **"Every step has a prediction and a revert or kill criterion"** was false for v2 step 1.
+
+| Theme | Sev | Raised by | Verified finding | Disposition in v3 |
+|---|---|---|---|---|
+| Mixed outcomes | BLOCKER | all five | One `outcome` per record; v2 declared a deferred subject under `outcome: adopted`, so the view would list it as adopted. | Outcome per subject; the plan is split into an adopted record and a deferred record. |
+| Merge driver | BLOCKER | distributed, docs-as-code, feasibility, multi-agent, security | See above. | No driver for the view; one row per subject, so competing claims conflict textually. Registry driver reported separately. |
+| Acceptance not authenticated | BLOCKER | security, distributed, feasibility | See above. | Record states that acceptance is merge to the default branch, that who may merge is an unenforced owner setting today, and lists the owner settings that would enforce it. |
+| Rule in the wrong place | BLOCKER | feasibility, docs-as-code, multi-agent, security | The "evidence, not instructions" rule was homed in a vendored skill: it reaches consumers who lack the format, and not hub agents, who load no skills. | A generated banner on every record and in the view's header; no vendored skill changes in step 2. |
+| Supersession rules | MAJOR | distributed, docs-as-code, multi-agent | Only adopted records superseded, but any record satisfied the check; holding undefined for deferred and rejected; cycles undetected. | One definition of "holds" used by view, banners and check; any outcome holds and supersedes; zero holders (a cycle) fails. |
+| Merged records editable | MAJOR | distributed, security | Front matter or body of a merged record could change silently. | Against the merge base: no delete or rename, no front-matter change, body grows only by `## Amended` sections. |
+| Direct reads | MAJOR | feasibility | An agent opening a superseded record by path saw no sign of it. | Generated banner states superseded subjects and the superseding record. |
+| Delete check unbuildable | MAJOR | docs-as-code, feasibility, distributed | A freshness check cannot see a deleted file; CI checks out depth 1. | Full-history checkout and a merge-base diff. |
+| Kinds vs existing records | MAJOR | feasibility, docs-as-code | Existing records mix findings and decisions; "open" fit no outcome; pending follow-up had no home. | `decides` empty means finding; `open` added; follow-up work stated as not covered. |
+| Self-fulfilling prediction | MAJOR | feasibility, multi-agent, distributed | The converter chose the subjects that decided the step-2 prediction. | Prediction dropped; the subject table is reviewed by the owner before conversion; dated revert criterion. |
+| Step 1 undecidable | MAJOR | feasibility, docs-as-code | No method, no file, no SHA. | Method (13 skills × 9 principles), the inventory as a decision record, the SHA named. |
+| Inventory incomplete | MAJOR | docs-as-code, security | `agent-operating-principles` §6 also homes decisions in `docs/research/`; the guide's security rules 3 and 4 overlap. | Added to the known overlaps. |
+| §5 measurement | MAJOR | multi-agent, feasibility | The harness has 6–8-file fixtures, tasks name files, no test oracle, workspace deleted; the candidate already exists in `subagent-framework` §3 item 2 except record ids; undefined zone between kill and prediction; oracle pointers measure an upper bound. | Deferred, with the task bank as the reopen condition and the design requirements listed. |
+| Deferral premise | MINOR | multi-agent | "Not observed" while the hub keeps no delegation log. | Restated as not recorded and not instrumented; reopen accepts hub-side reports; review date set. |
+| Deferred constraints | MINOR | distributed, multi-agent | Session id is not per-instance; leases need compare-and-swap plus fencing at the resource, not "outside git"; sequence numbers collide; dead agents need fencing; missing trigger, hash and panel constraints. | Constraints rewritten. |
+| Evidence detail | MINOR | multi-agent, docs-as-code | Gloaguen's cost increase omitted; Google's paper uncited; Dolt figures unsourced. | Added; unsourced Dolt numbers removed. |
+
+**Rejected on verification:** none.
 
 ## Appendix — plan v1 as reviewed in run 1
 
