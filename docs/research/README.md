@@ -15,3 +15,4 @@ mechanism: `scripts/sync-agent-skills.sh`, `lib.sh`, `update-check.sh`, `build-r
 | [`2026-07-01-vendoring-review.md`](2026-07-01-vendoring-review.md) | Round 1 (post-pivot): git-status gate wording, gate-script access tier, EXTERNAL_SKILLS, new-skill adoption |
 | [`2026-07-01-vendoring-review-round2.md`](2026-07-01-vendoring-review-round2.md) | Round 2 (+ round-3 correction): the ancestry-gating change that was shipped then **reverted** as a regression |
 | [`2026-07-01-vendoring-review-round4.md`](2026-07-01-vendoring-review-round4.md) | Round 4 (final-state panel): AGENT_PLAYBOOK_SRC asymmetry, rollback fail-open, test-coverage additions |
+| [`2026-10-26-substrate-review.md`](2026-10-26-substrate-review.md) | Adversarial board on the multi-agent substrate plan: run 1 findings, their dispositions, and the reviewed v1 text |
