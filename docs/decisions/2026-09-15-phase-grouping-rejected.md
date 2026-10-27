@@ -1,7 +1,20 @@
+---
+decides:
+  - subject: routing-index-phase-grouping
+    outcome: rejected
+    statement: The route index stays a flat list; grouping by workflow phase misplaces 7 of 13 skills.
+  - subject: routing-index-routes
+    outcome: adopted
+    statement: The routes section stays, on cross-harness portability alone; budget isolation is falsified and phase structure rejected.
+supersedes: [2026-09-14-routing-index-prior-art.md]
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Current on: `routing-index-phase-grouping` (rejected), `routing-index-routes` (adopted). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Grouping the route index by workflow phase — probed and rejected
 
 **Date:** 2026-09-15
-**Status:** closed — no change made; the flat list stands
 **Follows:** `2026-09-14-routing-index-prior-art.md`
 
 ## The proposal

@@ -1,8 +1,20 @@
+---
+decides:
+  - subject: routing-forced-choice
+    outcome: deferred
+    statement: The routing index does not force the agent to pick a route; a measured skip rate would reopen the inverted form.
+  - subject: subagent-live-messaging
+    outcome: deferred
+    statement: Running sub-agents are not messaged in either direction; a blocked agent stops and reports, and the coordinator re-delegates.
+supersedes: []
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Current on: `routing-forced-choice` (deferred), `subagent-live-messaging` (deferred). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Deferred: forced-choice routing, and sub-agent bidirectional messaging
 
 **Date:** 2026-09-13
-**Status:** deferred — not rejected on principle; deferred for lack of evidence and, in one case, for a
-harness dependency the hub cannot specify.
 **Context:** proposed while building the routing index (`.agents/AGENT_RULES.md`, PR #17) and the
 sub-agent configuration rules (`subagent-framework` §2/§3/§4).
 

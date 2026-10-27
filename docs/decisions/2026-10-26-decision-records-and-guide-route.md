@@ -8,11 +8,15 @@ decides:
     statement: structured-repo-guide is the home for repository hygiene; the hub links to it at a pinned commit after an overlap inventory with a ruling per overlap.
 supersedes: []
 ---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Current on: `decision-record-format` (adopted), `hub-guide-relationship` (adopted). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 
 # Decision records the hub can check, and a pinned route to the guide
 
-Review: `docs/research/2026-10-26-substrate-review.md` (adversarial board, runs 1 and 2). The deferred
-parts of the earlier plan are in `2026-10-26-deferred-coordination-layer.md`.
+Review: `docs/research/2026-10-26-substrate-review.md` (adversarial board, runs 1 and 2). The
+orchestration part of the same plan is `2026-10-27-orchestration-by-construction.md`.
 
 The front matter above is the format this record adopts (§2).
 
@@ -47,7 +51,8 @@ Scope: this hub's `docs/decisions/` only. Distribution to consuming repositories
   record.
 - A record's front matter has `decides` (a list, possibly empty) and `supersedes` (a list of record file
   names, possibly empty). Each `decides` entry has `subject` (matching `^[a-z0-9-]+$`), `outcome` (`adopted`
-  | `rejected` | `deferred` | `open`) and `statement` (one present-tense sentence). A record with an empty
+  | `rejected` | `deferred` | `open`) and `statement` (one present-tense sentence, without the characters
+  `|`, backtick, `<` or `>`, because it is copied into the view and banners). A record with an empty
   `decides` is a finding: a dated measurement or result.
 - Record R **holds** subject X when R declares X and no other record that declares X lists R in
   `supersedes`. Every outcome holds a subject. A `rejected` record can supersede an `adopted` one, which is
@@ -72,7 +77,8 @@ check to fail on each:
   link to the view. An agent that opens a record by path sees it. CodeCompass found that a plain
   instruction left a tool unused in 58% of trials ([arXiv:2602.20048](https://arxiv.org/html/2602.20048v1),
   preprint, one model). This rule therefore sits where the record is read, not in a skill an agent must
-  first load.
+  first load. In Claude Code the path-scoped rule `.claude/rules/decision-records.md` (`paths:
+  docs/decisions/**`) also loads the rule into any agent's context the moment it reads or edits a record.
 - **The view, `docs/decisions/README.md`**: the same rule in its header, then one row per subject (subject,
   outcome, statement, holder), sorted by subject. The guide puts its index at `docs/decisions.md`. The hub's
   records already live in `docs/decisions/`, so the index is that folder's README. One row per subject means
@@ -106,7 +112,9 @@ settle contradictions, so an inventory comes first:
   - `docs/research/` is permanent in the hub (`agent-repo-layout` lines 26, 50–51) and archived once its
     item closes in the guide (`layout.md` lines 59, 69).
   - A decision's home: `agent-repo-layout` lines 95–96 and `agent-operating-principles` §6 put decisions in
-    `docs/research/`, while this hub keeps them in `docs/decisions/`.
+    `docs/research/`, while this hub keeps them in `docs/decisions/`. Resolved in step 2:
+    `agent-repo-layout` 1.4.0 defines `docs/decisions/`, and `scripts/test/layout-homes.test.sh` fails when
+    a skill names, or this hub keeps, a `docs/` folder the layout does not define.
   - The guide's security rules for agents (`security/agents-and-automation.md`, rules 3 and 4) and this
     record's "evidence, not instructions".
 - **Pin bumps** are reviewed by a human with the guide's diff in the pull request.
@@ -136,11 +144,12 @@ Each step is one pull request, merged by the owner.
    one of the 13 skills has at least one row or an explicit "no overlap", and every row has a ruling. Skills
    whose text is replaced by a pinned link get a version bump and a `CHANGELOG.md` entry, because they reach
    consumers.
-2. **Decision records (§2).** The pull request description first proposes a subject table for the 7
-   existing records (subjects, outcomes, statements, `supersedes`), for the owner to review. Then it adds the
-   generator, the check and its self-test in `scripts/`, the CI step, front matter and banners on all
-   records, and `## Amended` corrections for the stale lines in §1. No file is renamed and no vendored skill
-   changes.
+2. **Decision records (§2).** The pull request description proposes the subject table for the 7 existing
+   records (subjects, outcomes, statements, `supersedes`) for the owner to review. The change adds
+   `scripts/decisions.sh`, its self-test, the CI step, front matter and banners on all records, and an
+   `## Amended` correction for the stale lines in §1. No file is renamed. The format and its check stay in
+   this hub. The only vendored change is the decision home in `agent-repo-layout` and
+   `agent-operating-principles`, which fixes the contradiction in §3.
    - Revert criterion: on 2027-01-31 the owner reviews the check's CI failures since adoption. If none of
      them caught a real conflict or a stale record, and at least one forced a change the owner judged wrong,
      the check is removed and the front matter stays.

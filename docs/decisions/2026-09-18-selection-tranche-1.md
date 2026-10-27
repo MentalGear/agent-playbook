@@ -1,7 +1,17 @@
+---
+decides:
+  - subject: subagent-framework-trigger
+    outcome: adopted
+    statement: The subagent-framework description opens with the decision to delegate, not the act of writing code (1.4.0); an A/B confirmed it at p = 3e-5.
+supersedes: []
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Current on: `subagent-framework-trigger` (adopted). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Skill selection measured: precise everywhere except one trigger
 
 **Date:** 2026-09-18
-**Status:** measured; one trigger change proposed, with a prediction to check it against
 **Harness and full tables:** `MentalGear/agent-playbook-test` → `eval/RESULTS.md`, "Selection tranche"
 **Follows:** `2026-09-18-eval-tranche-1.md`
 

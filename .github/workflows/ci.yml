@@ -4,17 +4,37 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   skills:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0   # full history: the decision-record check compares against the merge base
 
       - name: registry.yaml is fresh (regenerate → no diff)
         run: |
           bash scripts/build-registry.sh
           git diff --exit-code registry.yaml \
             || { echo "::error::registry.yaml is stale — run scripts/build-registry.sh and commit it."; exit 1; }
+
+      - name: decision records (format, generated view and banners, merged records frozen)
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Compare against what this change is merged onto: the PR base, the previous tip of a pushed
+          # default branch, or the merge base with it for any other branch.
+          if [ "$EVENT" = pull_request ]; then base="$PR_BASE"
+          elif [ "$GITHUB_REF" = refs/heads/main ]; then base="$BEFORE"
+          else base="$(git merge-base HEAD origin/main 2>/dev/null || true)"; fi
+          case "$base" in ''|0000000000000000000000000000000000000000)
+            echo "::warning::no base revision; checking format only"; bash scripts/decisions.sh --check ;;
+          *) bash scripts/decisions.sh --check --base "$base" ;; esac
 
       - name: validate all skills
         run: bash scripts/validate-skill.sh --all

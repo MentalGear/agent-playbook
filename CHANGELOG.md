@@ -18,6 +18,17 @@ repo carries it. An entry without one is safe to adopt by re-syncing and nothing
 
 ---
 
+## 2026-10-27 — `agent-repo-layout` 1.4.0, `agent-operating-principles` 2.2.0: one home for decisions
+
+- `agent-repo-layout` adds `docs/decisions/` to the standard layout and to the `access.yaml` example
+  (`append`). A decision record goes there, not in `docs/research/`; the skill's own text had said
+  `docs/research/`.
+- `agent-operating-principles` §6 now writes a decision to that home, instead of "the same research doc as
+  §1".
+- No consumer action — re-sync. A repository that already keeps decisions in `docs/research/` can stay as
+  it is; add the folder when you next record a decision. If your `.agents/access.yaml` lists `docs/`
+  folders, add `docs/decisions/**` with `append`.
+
 ## 2026-10-20 — `129dd89` `subagent-framework` 1.4.0: trigger names the decision
 
 - The opener changed from *"about to write real code"* to *"deciding whether to delegate a piece of

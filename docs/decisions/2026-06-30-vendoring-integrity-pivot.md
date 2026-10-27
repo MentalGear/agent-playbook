@@ -1,8 +1,17 @@
+---
+decides:
+  - subject: vendoring-integrity
+    outcome: adopted
+    statement: A consuming repo checks its vendored skills by re-running the deterministic sync and failing on any git status change, not by per-skill content hashes.
+supersedes: []
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Current on: `vendoring-integrity` (adopted). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Decision record: vendoring integrity — from hash-lock to a deterministic-sync git-diff gate
 
 **Date:** 2026-06-30
-**Status:** Adopted (pivot on `claude/update-mechanism-pivot`; the prior design is preserved on
-`claude/hardened-stopped` for reference).
 
 ## Context
 

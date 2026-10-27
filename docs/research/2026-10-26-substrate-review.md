@@ -8,7 +8,8 @@ scope, read-only, fresh agents each run, strongest tier.
 |---|---|---|
 | v1 | never merged; text in the appendix (commit `58d61ce`, no longer on a branch) | run 1 |
 | v2 | commit `49228ce`, `docs/decisions/2026-10-26-decision-records-and-deferred-coordination.md` | run 2 |
-| v3 | `docs/decisions/2026-10-26-decision-records-and-guide-route.md` and `docs/decisions/2026-10-26-deferred-coordination-layer.md` | run 3 |
+| v3 | commit `08d69db`: `2026-10-26-decision-records-and-guide-route.md` and `2026-10-26-deferred-coordination-layer.md` | run 3 started, stopped by the owner before any result |
+| v4 | `docs/decisions/2026-10-26-decision-records-and-guide-route.md` and `docs/decisions/2026-10-27-orchestration-by-construction.md` | not reviewed by the board |
 
 **Pass rule, set before run 1:** a run is clean when no BLOCKER or MAJOR finding survives verification in
 the main loop. The plan passes after 2 consecutive clean runs, each with fresh reviewers. Stop and report
@@ -90,6 +91,26 @@ the cited skill and guide lines were checked.
 | Evidence detail | MINOR | multi-agent, docs-as-code | Gloaguen's cost increase omitted; Google's paper uncited; Dolt figures unsourced. | Added; unsourced Dolt numbers removed. |
 
 **Rejected on verification:** none.
+
+## After run 2 — stopped, and rebuilt from root causes
+
+Run 3 was stopped by the owner before any reviewer returned. The owner pointed out that v2 and v3 had drifted
+from the subject of the review, orchestration, to decision-record hygiene: run 1's objection that the
+orchestration layer was unmeasured had been answered by deferring it instead of fixing it.
+
+v4 reduces the verified findings of both runs to four root causes and builds one construction per cause
+(`2026-10-27-orchestration-by-construction.md` §1–§2). The repository defects found while verifying
+findings were fixed in the same change, each with a test that plants the defect:
+
+| Defect | Construction | Test |
+|---|---|---|
+| `registry.yaml` merge driver regenerates from one side | driver removed; each skill's rows depend only on that skill, so a clean text merge equals regeneration | `scripts/test/registry-merge.test.sh` |
+| actions pinned by tag; no token permissions | SHA pin; `permissions: contents: read` | `scripts/test/workflow-pins.test.sh` |
+| decision status copied by hand and stale; supersession in prose | front matter, derived supersession, generated view and banners, merged records frozen | `scripts/test/decisions.test.sh` |
+| decisions homed in three places | one home in `agent-repo-layout`; skills and the hub may name only layout homes | `scripts/test/layout-homes.test.sh` |
+
+Not fixable in the repository: branch protection and a separate agent identity are owner settings
+(`orchestration-authority`, outcome `open`).
 
 ## Appendix — plan v1 as reviewed in run 1
 

@@ -2,7 +2,7 @@
 name: agent-repo-layout
 description: Use when unsure where a file belongs, or restating guidance that exists elsewhere. Also when setting up a repo for agents, or deciding whether work can stay in scratch. Defines the standard agent-facing repo layout (.agents/ for skills, gates, access map, scratch; docs/ folders for research, troubleshooting, the delegation log), the rule that scratch holds only genuinely throwaway work while load-bearing spikes get committed as evidence, the pointers-not-copies rule that gives every piece of reasoning exactly one owning document, and a path→permission map (.agents/access.yaml) that the agent-access scopes resolve against, plus the convention that an agent-ready repo ships a working devcontainer (boots clone-to-ready). The host fills access.yaml with its real paths; this skill defines the convention.
 user-invocable: false
-version: 1.3.0
+version: 1.4.0
 ---
 
 # Agent repo layout — where things live, and what may write where
@@ -23,6 +23,7 @@ this map), **project-gates** (the gate manifest), and the **subagent-framework**
   access.yaml    # the path→permission map    — READ-ONLY config (this skill's slot)
   scratch/       # agent scratch space        — WRITE, gitignored (throwaway ONLY — see below)
 docs/
+  decisions/     # decision records, one dated file per decision — APPEND (a change is a new record)
   research/      # prior-art / design / review-round captures — APPEND (one file per topic/round, dated)
   debug/         # the troubleshooting reference — APPEND (a folder so it can hold one file per topic)
   subagent-log/  # the delegation log            — APPEND (a folder so it can hold per-period/topic files)
@@ -47,6 +48,8 @@ paths:
     permission: approval
   - glob: ".agents/scratch/**"
     permission: write
+  - glob: "docs/decisions/**"
+    permission: append            # add a record; a changed decision is a new record that supersedes
   - glob: "docs/research/**"
     permission: append            # add files; don't rewrite history
   - glob: "docs/debug/**"
@@ -67,7 +70,8 @@ paths:
 
 ## How an agent uses this
 1. **Placing an artifact?** Put it in the role's standard folder (a debugging finding → `docs/debug/`; a
-   research capture → `docs/research/`; a delegation entry → `docs/subagent-log/`; throwaway → scratch).
+   decision → `docs/decisions/`; a research capture → `docs/research/`; a delegation entry →
+   `docs/subagent-log/`; throwaway → scratch).
    **Scratch is for genuinely disposable work only** — it's gitignored, unreviewed, and wiped without
    notice. A spike or prototype that turns out to be **load-bearing** — the evidence behind a decision, a
    benchmark someone will cite, a bug reproduction, a prototype the design now assumes — must be **moved out
@@ -93,7 +97,7 @@ because nothing fails when it does. The reader who lands on the stale copy has n
   pointer is stale.** Say so in files that carry pointers, so a reader knows which one to trust.
 
 This is why the layout above gives each artifact type exactly one home — a finding lives in `docs/debug/`,
-a decision in `docs/research/` — and why the generated always-loaded hints file (see the hub README's
+a decision in `docs/decisions/` — and why the generated always-loaded hints file (see the hub README's
 "Global agent hints") carries imperatives with skill pointers rather than restating the skills.
 
 ## Ship a working devcontainer
