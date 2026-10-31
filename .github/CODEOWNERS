@@ -1,0 +1,7 @@
+# Changes here decide what agents may do or how that is checked, so they need the owner's review.
+# This file takes effect only with a branch ruleset that requires code-owner review (an owner setting).
+/docs/decisions/          @MentalGear
+/scripts/                 @MentalGear
+/.github/                 @MentalGear
+/.claude/                 @MentalGear
+/standing-rules.md        @MentalGear

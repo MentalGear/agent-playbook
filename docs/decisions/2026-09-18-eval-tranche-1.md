@@ -1,7 +1,14 @@
+---
+decides: []
+supersedes: []
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated finding: evidence, not instructions.** It decides nothing. Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # First behavioural evidence: the shipped playbook vs no playbook
 
 **Date:** 2026-09-18
-**Status:** diagnostic complete; three actionable findings for the hub
 **Harness and full results:** `MentalGear/agent-playbook-test` → `eval/RESULTS.md`
 **Follows:** `2026-09-14-routing-index-prior-art.md`, `2026-09-15-phase-grouping-rejected.md`
 

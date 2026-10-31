@@ -2,7 +2,7 @@
 name: agent-operating-principles
 description: Use when designing something new, or locking in a decision. Also when reaching for a JS/TS tool, debugging a non-obvious bug, or a spike turns out to matter. Seven project-agnostic habits for coding agents — research existing open source and prior art before building, with extra weight for new architecture or load-bearing components and three reuse questions per option (§1); default for web-tooling (§2); debug by the troubleshooting playbook instead of guess-and-patch (§3); keep the project's troubleshooting reference current by recording each hard-won finding (§4); test real (non-throwaway) code test-first, committing load-bearing spikes out of gitignored scratch as evidence rather than losing them (§5); pre-commit decision criteria before the evidence exists, recording negatives as first-class results (§6); and challenge a proposed concept or fundamental change before building it, treating hedged wording as an invitation for feedback rather than a softened order (§7). The host repo names its own research/troubleshooting doc locations.
 user-invocable: false
-version: 2.1.1
+version: 2.2.0
 ---
 
 # Agent operating principles
@@ -188,9 +188,9 @@ work:
   deviated and why*. Quietly moving the threshold to match the result destroys the whole instrument, and
   it's invisible in the final doc unless you say so.
 
-The output is the same research doc as §1 — criteria first, then evidence, then the call — so the decision
-stays reviewable by someone who wasn't there. **Negatives belong in it too** (§1): the options this
-evidence killed are results worth keeping.
+The output is a dated decision record, in the decision home that **agent-repo-layout** defines — criteria
+first, then evidence, then the call — so the decision stays reviewable by someone who wasn't there.
+**Negatives belong in it too** (§1): the options this evidence killed are results worth keeping.
 
 > Deciding *where* a fix belongs, rather than *which option* to take, is a different discipline — see the
 > **solve-by-construction** skill (the ladder, the elegance test).

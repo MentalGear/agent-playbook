@@ -4,17 +4,44 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   skills:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0   # full history: the decision-record check compares against the merge base
+          persist-credentials: false
 
       - name: registry.yaml is fresh (regenerate → no diff)
         run: |
           bash scripts/build-registry.sh
           git diff --exit-code registry.yaml \
             || { echo "::error::registry.yaml is stale — run scripts/build-registry.sh and commit it."; exit 1; }
+
+      - name: decision records (format, generated files, merged records frozen)
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Compare against what this change lands on: for a PR, the first parent of the merge commit
+          # being tested; for a push to main, the previous tip; for another branch, its merge base.
+          if [ "$EVENT" = pull_request ]; then base="$(git rev-parse HEAD^1)"
+          elif [ "$GITHUB_REF" = refs/heads/main ]; then base="$BEFORE"
+          else base="$(git merge-base HEAD origin/main)"; fi
+          case "$base" in
+            ''|0000000000000000000000000000000000000000)
+              echo "::error::no base revision to compare merged records against"; exit 1 ;;
+          esac
+          git cat-file -e "$base^{commit}" 2>/dev/null \
+            || { echo "::error::base $base is not in this clone (force-push to main?); compare by hand"; exit 1; }
+          bash scripts/decisions.sh --check --base "$base"
+
+      - name: decision reviews due (annotation; never fails the build)
+        run: bash scripts/decisions.sh --due | sed 's/^decisions: review due/::warning::review due/' || true
 
       - name: validate all skills
         run: bash scripts/validate-skill.sh --all

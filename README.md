@@ -50,7 +50,7 @@ scripts/
   validate-skill.sh                     # validate a proposed skill (used by review-skill-proposal)
   update-check.sh                       # consumer: lockfile vs upstream registry (new/updated/deprecated)
   measure-index-overhead.sh             # instrument: is the route index earning its always-loaded context?
-  setup.sh                              # one-time: register the registry.yaml regenerate-on-conflict driver
+  decisions.sh                          # check docs/decisions/ and generate its view and record banners
 .github/workflows/ci.yml                # registry freshness · validate-skill · test harnesses · shellcheck
 VERSION                                 # the human-facing release ref (consumers also pin a commit SHA)
 ```

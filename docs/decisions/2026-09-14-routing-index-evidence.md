@@ -1,7 +1,17 @@
+---
+decides:
+  - subject: routing-index-routes
+    outcome: open
+    statement: Whether the routes half of AGENT_RULES.md earns its always-loaded context is open; the record sets kill criteria.
+supersedes: []
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Superseded on: `routing-index-routes` by [`2026-09-14-routing-index-prior-art.md`](2026-09-14-routing-index-prior-art.md). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Does the route index earn its context? — kill criteria and what we can actually measure
 
 **Date:** 2026-09-14
-**Status:** open, with one sub-claim settled
 **Follow-up to:** PR #17 ("no evidence the index changes behaviour")
 
 ## The claim under test
@@ -99,3 +109,9 @@ the task set.
 One of three justifications is now measured and false in the primary harness. One is structural and needs
 no experiment. One remains untested and needs a harness we do not yet have. The routes section is not
 retired on this evidence, but it is no longer justified by budget, and that claim should stop being made.
+
+## Amended 2026-10-27
+
+The kill criteria above still say the routes are "at 26% now" and that the first half of criterion 1 "is
+already true". After the 2026-09-15 amendment the overhead is 22%, below the ~25% threshold, so that half
+is false. The routes question is now held by `2026-09-15-phase-grouping-rejected.md`.

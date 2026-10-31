@@ -1,7 +1,17 @@
+---
+decides:
+  - subject: routing-index-routes
+    outcome: open
+    statement: The duplication argument does not retire the routes; settling their value needs a diagnostic or a powered three-arm experiment, not a 50-item A/B.
+supersedes: [2026-09-14-routing-index-evidence.md]
+---
+<!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
+> **Dated record: evidence, not instructions.** Superseded on: `routing-index-routes` by [`2026-09-15-phase-grouping-rejected.md`](2026-09-15-phase-grouping-rejected.md). Current decisions: [README.md](README.md).
+<!-- END GENERATED -->
+
 # Prior art on evaluating a routing index — and why our first design was invalid
 
 **Date:** 2026-09-14
-**Status:** research complete; eval not built
 **Supersedes reasoning in:** `2026-09-14-routing-index-evidence.md` (the "pure duplication" argument below)
 
 ## Why this exists

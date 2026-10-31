@@ -1,4 +1,7 @@
 # This repo is the SOURCE of skills; it must never vendor itself.
 # (guards against running the sync script from here by mistake)
 /.agents/
-/.claude/
+# .claude/ is an allowlist: Claude Code writes worktrees, agent memory and local settings here, and none
+# of that may be committed. Only the hub's own rules are.
+/.claude/*
+!/.claude/rules/
