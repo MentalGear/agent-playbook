@@ -2,6 +2,7 @@
 decides:
   - subject: decision-record-format
     outcome: adopted
+    review: 2027-01-31
     statement: Records in docs/decisions/ carry checked front matter, and a generated view lists the decision in force on each subject.
   - subject: hub-guide-relationship
     outcome: adopted
@@ -52,23 +53,29 @@ Scope: this hub's `docs/decisions/` only. Distribution to consuming repositories
 - A record's front matter has `decides` (a list, possibly empty) and `supersedes` (a list of record file
   names, possibly empty). Each `decides` entry has `subject` (matching `^[a-z0-9-]+$`), `outcome` (`adopted`
   | `rejected` | `deferred` | `open`) and `statement` (one present-tense sentence, without the characters
-  `|`, backtick, `<` or `>`, because it is copied into the view and banners). A record with an empty
+  `|`, backtick, `<` or `>`, because it is copied into the view and banners). An entry may also carry
+  `review` (a date; §2.5 of `2026-10-27-orchestration-by-construction.md`). A record with an empty
   `decides` is a finding: a dated measurement or result.
+- Records are named `YYYY-MM-DD-slug.md` and live directly in the folder. Any other file or subdirectory
+  there is an error.
 - Record R **holds** subject X when R declares X and no other record that declares X lists R in
   `supersedes`. Every outcome holds a subject. A `rejected` record can supersede an `adopted` one, which is
   how a decision is retired without a replacement.
 
 **What the check enforces.** It has a self-test that plants each of these violations and requires the
-check to fail on each:
+check to fail with the error written for it:
 
 - Front matter is missing, has a duplicate key, or has a value outside the vocabulary above.
 - A subject has two holders (an unlinked duplicate) or none (a `supersedes` cycle).
 - A `supersedes` entry names a missing file, the record itself, or a record that shares no subject with it.
 - A record still carries a free-text `**Status:**` line.
-- The generated view or a generated banner is stale.
-- Against the merge base, a merged record is deleted or renamed, its front matter changed, or its body
-  changed other than by an appended section headed `## Amended YYYY-MM-DD`. CI checks out full history for
-  this comparison.
+- The generated view, a generated banner or the generated rule file is stale.
+- Against the merge base, a merged record is deleted or renamed, its front matter changed (except a
+  `review` date moved later), or its body changed other than by an appended section headed
+  `## Amended YYYY-MM-DD`. CI checks out full history for this comparison.
+
+CI runs the pull request's own copy of the check, so a pull request can weaken it. The check stops
+mistakes. Stopping a determined agent needs the owner settings in §4.
 
 **What is generated.**
 
@@ -77,8 +84,10 @@ check to fail on each:
   link to the view. An agent that opens a record by path sees it. CodeCompass found that a plain
   instruction left a tool unused in 58% of trials ([arXiv:2602.20048](https://arxiv.org/html/2602.20048v1),
   preprint, one model). This rule therefore sits where the record is read, not in a skill an agent must
-  first load. In Claude Code the path-scoped rule `.claude/rules/decision-records.md` (`paths:
-  docs/decisions/**`) also loads the rule into any agent's context the moment it reads or edits a record.
+  first load.
+- **The rule file `.claude/rules/decision-records.md`** (`paths: docs/decisions/**`), from the same text
+  as the view's header. Claude Code loads it into an agent's context when the agent reads, writes or edits
+  a record.
 - **The view, `docs/decisions/README.md`**: the same rule in its header, then one row per subject (subject,
   outcome, statement, holder), sorted by subject. The guide puts its index at `docs/decisions.md`. The hub's
   records already live in `docs/decisions/`, so the index is that folder's README. One row per subject means
@@ -128,9 +137,9 @@ agents in this setup act under the owner's GitHub account, so a merge by an agen
 the owner's. Until the owner changes that, "a model merges only on the owner's explicit instruction" is
 policy, not enforcement. The owner's settings that would enforce it, recorded here and not done by an agent:
 
-- a ruleset on `main` that requires a pull request and requires the decisions check, with "require
-  branches to be up to date". This also closes the case where two pull requests, each valid alone, claim
-  the same subject;
+- a ruleset on `main` that requires a pull request, the `skills` job of the `ci` workflow (which runs the
+  decision check), branches up to date, and code-owner review (`.github/CODEOWNERS`). Up-to-date branches
+  also close the case where two pull requests, each valid alone, claim the same subject;
 - agents acting under their own identity, without merge rights.
 
 Until then, that case is caught by the check on `main` after the second merge. The fix is a new pull
@@ -150,6 +159,6 @@ Each step is one pull request, merged by the owner.
    `## Amended` correction for the stale lines in §1. No file is renamed. The format and its check stay in
    this hub. The only vendored change is the decision home in `agent-repo-layout` and
    `agent-operating-principles`, which fixes the contradiction in §3.
-   - Revert criterion: on 2027-01-31 the owner reviews the check's CI failures since adoption. If none of
+   - Revert criterion: on 2027-01-31 (the `review` date above) the owner reviews the check's CI failures since adoption. If none of
      them caught a real conflict or a stale record, and at least one forced a change the owner judged wrong,
      the check is removed and the front matter stays.

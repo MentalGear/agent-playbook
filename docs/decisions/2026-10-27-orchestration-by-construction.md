@@ -2,31 +2,37 @@
 decides:
   - subject: orchestration-single-writer
     outcome: adopted
-    statement: The coordinator is the only writer of work state and of the delegation log; sub-agents return results and write no shared state.
+    statement: Every shared orchestration file has one writer; a sub-agent returns its result and writes only inside its declared scope, and only the coordinator runs generators.
   - subject: delegation-log
     outcome: adopted
-    statement: A harness hook writes one observed line per delegation into a per-session file, and the coordinator adds its verdict after re-running the gates.
+    review: 2027-01-31
+    statement: Planned, rollout step 1. Harness hooks will record each delegation in its own file from observed fields, and the coordinator will record its verdict in a separate file.
   - subject: return-contract-enforcement
     outcome: adopted
-    statement: The return contract is delivered to every sub-agent and checked when it stops, by harness hooks, instead of being restated in each brief.
+    review: 2027-03-31
+    statement: Planned, rollout steps 1 and 2. The return contract is defined once in subagent-framework, delivered to every sub-agent and checked when it reports, by harness hooks.
   - subject: rules-at-point-of-use
     outcome: adopted
-    statement: A rule bound to a path is delivered when an agent touches that path, through path-scoped rules, and enforced through permissions where it must hold.
+    statement: A rule bound to a path is delivered as a path-scoped rule when an agent touches the path; where a rule must hold, a permission rule plus the sandbox or a hook enforces it.
   - subject: review-date-triggers
     outcome: adopted
-    statement: A decision may carry a review date, and a scheduled CI job is its evaluator; no trigger exists without a job that runs it.
+    statement: A decision may carry a review date; scripts/decisions.sh --due evaluates it in every CI run, so no review date exists without a job that checks it.
   - subject: orchestration-authority
     outcome: open
+    review: 2026-12-31
     statement: Who may merge is a host setting the owner has not yet made; until then the rule that a model merges only on the owner's instruction is unenforced.
   - subject: multi-coordinator-leases
     outcome: deferred
-    statement: Leases for several independent coordinators are not built until a coordination failure between coordinators is recorded.
+    review: 2027-04-30
+    statement: Leases between independent coordinators are not built until the cross-session overlap check records a collision; that coordination is unsolved, not unneeded.
   - subject: pointer-brief-measurement
     outcome: deferred
+    review: 2027-04-30
     statement: Briefs that list record ids are not measured until the evaluation harness can measure re-exploration.
   - subject: dolt-store
     outcome: deferred
-    statement: Dolt is not used as a store; it is the first escalation for work state only if plain files measurably fail.
+    review: 2027-04-30
+    statement: Dolt is not used as a store; it is the first escalation for orchestration state only if plain files measurably fail.
 supersedes: []
 ---
 <!-- BEGIN GENERATED: scripts/decisions.sh. Do not edit; run scripts/decisions.sh --write. -->
@@ -36,133 +42,198 @@ supersedes: []
 
 # Orchestration built from its root causes
 
-Review: `docs/research/2026-10-26-substrate-review.md` (adversarial board, runs 1 and 2, on two earlier
-versions of this plan). This record replaces both. The board was stopped before run 3 at the owner's
-request; this version has not been reviewed by the board.
+Review: `docs/research/2026-10-26-substrate-review.md` (adversarial board). Runs 1 and 2 reviewed two
+earlier versions; run 3 was stopped by the owner; run 4 reviewed the first version of this record and
+found its core sound with fixes, which this version makes.
 
 ## 1. Root causes
 
-The verified findings of both board runs, and the defects found in this repository while checking them,
-reduce to four causes. Each construction in §2 removes one cause for a whole class of findings.
+The verified board findings, and the defects found in this repository while checking them, reduce to five
+causes. Each construction in §2 removes one cause for the classes of findings listed; the last column says
+what it does not cover.
 
-| Root | Findings it produced |
-|---|---|
-| **R1. A rule enforced only by the agent's compliance.** | "A model never merges" with an unprotected `main` and agents acting under the owner's account; merge on green; forgeable identity in git authors and trailers; append-only and namespaces that nothing enforced; triggers with no evaluator on the host; the access map is advisory; the delegation log that `subagent-framework` specifies was never kept; decision homes named in three skills; the code index left unused when only instructed (CodeCompass: 58% of trials). |
-| **R2. State with more than one writer, or more than one copy.** | Work-state events written by every agent, which needed leases, clocks, per-agent namespaces and collision-free ids; status lines copied from the world into decision records, three of them stale; generated views merged by a custom driver that sees one side (`registry.yaml`: reproduced); the hub and the guide each stating rules for `docs/research/`. |
-| **R3. A report trusted where an observation exists.** | Agents reporting gate results, files touched and their own death; event order from self-reported clocks; paper findings relayed from summaries instead of read (four citations wrong in v1, two more in the run-1 corrections). |
-| **R4. A change made without an instrument to judge it.** | Measurement placed last in v1; "coordination failures not observed" when nothing records delegations; a harness whose fixtures cannot show re-exploration. |
+| Root | Findings it produced | Not covered |
+|---|---|---|
+| **R1. A rule enforced only by the agent's compliance.** | "A model never merges" with an unprotected `main` and agents acting under the owner's account; merge on green; forgeable identity in git authors and trailers; append-only that nothing enforced; triggers with no evaluator; the advisory access map; disjoint write scopes that only the brief states; the delegation log that `subagent-framework` specifies and nobody kept. | A tool an agent is only told to use (CodeCompass: unused in 58% of trials) has no construction here. |
+| **R2. State with more than one writer, or more than one copy.** | Work-state events written by every agent, which needed leases, clocks, namespaces and ids; status lines copied into decision records, three of them stale; a merge driver that sees one side (`registry.yaml`, reproduced); decision homes named in three skills; one rule text kept by hand in two files. | State shared between independent sessions (§2.1). |
+| **R3. A report trusted where an observation exists.** | Agents reporting gate results, files touched and their own death; order from self-reported clocks. | Paper findings relayed from summaries instead of read: a working rule (quote the passage), not a construction. |
+| **R4. A change made without an instrument to judge it.** | Measurement placed last; "coordination failures not observed" when nothing records delegations; predictions that the mechanism itself makes true. | — |
+| **R5. An interface enforced before it is specified.** | A hook to check "the contract's sections" when no section is defined; states, timeouts and fields named without definitions. | — |
 
 ## 2. Constructions
 
-### 2.1 One writer (R2) — `orchestration-single-writer`
+### 2.1 One writer per file (R2) — `orchestration-single-writer`
 
-The coordinator is the only writer of work state and of the delegation log. A sub-agent returns its
-result (§3 item 6 of `subagent-framework`) and writes no shared state. Parallel sub-agents are kept apart
-by disjoint write scopes, checked by the coordinator before dispatch (`subagent-framework` §3 item 4).
+| File | Its one writer |
+|---|---|
+| The coordinator's task list and status overview | the coordinator |
+| Observed delegation records (§2.2) | the hooks of that one sub-agent |
+| Verdicts on delegations | the coordinator |
+| Generated files (`registry.yaml`, `docs/decisions/README.md`, banners, the rule file) | the generator, run only by the coordinator after it joins the sub-agents' work |
+| The working tree | each sub-agent inside its declared write scope; parallel writers in separate worktrees (`subagent-framework` §2) |
 
-With one writer per piece of state, ordering is the writer's own order, and identity is the host's agent
-id. Leases, clocks, per-agent namespaces and coordinated id schemes are not needed, so they are not
-built. They are needed only when several independent coordinators share work (`multi-coordinator-leases`,
-§4).
+- **Scope enforcement** (rollout step 1). In Claude Code, a `PreToolUse` hook on `Edit`, `Write` and `NotebookEdit` reads
+  `agent_id` and denies a path outside the scope file the coordinator wrote at dispatch. A subprocess
+  (a script run through Bash) is not covered by that hook. Parallel writers therefore also get worktrees,
+  so a missed write lands on their own branch, not on a sibling's files.
+- **Nesting.** A sub-agent may spawn its own sub-agents, up to three levels by default
+  ([sub-agents](https://code.claude.com/docs/en/sub-agents)). An agent that delegates is the coordinator
+  of its children and writes their verdicts. Each observed record names its parent, taken from the
+  transcript path.
+- **Between sessions this is unsolved.** Two sessions are two coordinators, and nothing serializes them
+  but the merge. The mitigation is detection (rollout step 1): a CI step lists other open pull requests
+  that change the same files, as a warning. That step is the reopen trigger for `multi-coordinator-leases` (§4).
 
 ### 2.2 Observed, not reported (R3, R4) — `delegation-log`
 
-A harness hook writes the delegation log. In Claude Code the `SubagentStop` hook receives the agent id and
-type, the sub-agent's transcript path and its final message. From these it writes one line: date, session,
-agent id and type, the model served, token use including cache reads, duration, and the state the agent
-claimed. The coordinator then adds its verdict, after re-running the gates.
+- **Records, not lines.** Each delegation gets its own file,
+  `$CLAUDE_PROJECT_DIR/docs/subagent-log/<session>/<agent_id>.jsonl`. Its own hooks append to it, one JSON
+  object per event, written with `jq`. `$CLAUDE_PROJECT_DIR` is required because a worktree sub-agent's
+  hook runs with the worktree as its working directory.
+  - **`SubagentStart`** writes `start`: time, `agent_type`, parent.
+  - **`SubagentStop`** writes `stop`: time, transcript path, contract result. It fires on every stop and
+    every resume, so a delegation has one `start` and one or more `stop` events.
+  - **`PostToolUse` on `Agent`** writes `usage`: the served model, duration, and the token use summed from
+    the transcript, de-duplicated by message id and counting cache reads. The transcript may lag, so the
+    usage fields are marked provisional when the transcript's last turn is missing.
+- **Ignored.** Events for an `agent_id` with no `start`. These include Claude Code's internal agents, such
+  as prompt suggestions and `/btw`.
+- **Free text is never copied.**
+  - A claimed state is written only if it is one of the five names in §2.3; anything else becomes
+    `unparsed`.
+  - `session` and `agent_id` must match `^[A-Za-z0-9_-]+$`.
+  - The log is evidence, not instructions, like decision records.
+- **Verdicts** go to `docs/subagent-log/<session>/verdicts.md`, written by the coordinator after it
+  re-runs the gates.
+- **Gaps, stated.**
+  - Stop hooks do not run on a user interrupt or a crash. A `start` with no `stop` is how those show up.
+  - The log survives only if the session commits it. A session that is discarded loses its log, so the
+    log under-counts exactly the sessions that went wrong.
+- **Host slot.** These hooks are the Claude Code implementation. The fields are defined once, in
+  `subagent-framework/reference.md`, for any harness. Consuming repos receive hooks only through the
+  vendored, pinned sync. They are never merged into a consumer's settings automatically.
 
-- **One file per session** (`docs/subagent-log/<date>-<session>.md`), so concurrent sessions never write
-  the same file. `agent-repo-layout` already gives the log its home and `append` access.
-- **Host slot.** The hook is the Claude Code implementation. Another harness fills the same fields its own
-  way; the log's fields are defined once, in `subagent-framework/reference.md`.
-- It is also the instrument R4 asked for: a coordination failure can now be seen in the log, which the
-  deferred subjects in §4 need before they can reopen.
+### 2.3 The return contract, specified before it is enforced (R1, R5) — `return-contract-enforcement`
 
-### 2.3 The return contract at the boundary (R1) — `return-contract-enforcement`
-
-- **Delivered:** a `SubagentStart` hook adds the return contract to every sub-agent's context, so a brief
-  no longer has to restate it.
-- **Checked:** the `SubagentStop` hook checks the final message for a state line and the contract's
-  sections. If something is missing, it blocks once with the missing items as the reason, and the
-  sub-agent completes its report. If the second attempt also fails, the hook does not block again; the
-  failure is logged instead.
-- **States** use A2A's names: `completed`, `failed`, `input-required`, `rejected`, `canceled`.
-  `input-required` carries the open question as Options, Recommendation, Rationale, Confidence and
-  Falsifier, so the owner can answer it with one judgement. `stale` is the coordinator's observation of an
-  agent that has not returned after a timeout; it routes to `salvage-subagent-transcript`. An agent never
-  reports its own death.
-- The gates stay the coordinator's: it re-runs them, and a claimed pass is never accepted without that.
+- **Specified first.** `subagent-framework` §3 item 6 gains an exact report format:
+  - a first line `State: <state>`;
+  - named sections for what came out weaker, what could not be verified, and the skip list.
+  - Review panels (`independent-expert-review`) and read-only search agents get the same first line; their
+    own schemas keep their sections.
+- **States.**
+  - **Reported by the agent:** `completed`, `failed`, `input-required` (A2A names).
+    - `input-required` carries the question as Options, Recommendation, Rationale, Confidence and
+      Falsifier.
+    - The coordinator answers it if it can; otherwise it goes to the owner.
+    - A tool call denied for lack of permission is reported as `input-required`, naming the permission.
+  - **Observed by the coordinator, never reported by the agent:**
+    - `canceled`: the coordinator stopped the agent.
+    - `stale`: a background agent with no `stop` past the timeout in its brief.
+    - `returned-unusable`: a report that failed the check twice.
+  - Each observed state routes to its class in `salvage-subagent-transcript`. A foreground agent blocks
+    the coordinator, so `stale` applies to background agents only.
+- **Delivered.** A `SubagentStart` hook adds the contract to each sub-agent's context. Auto-compaction can
+  drop it; the check at the end still applies.
+- **Checked.**
+  - The report is read from `tool_input.message` of a `PreToolUse` hook on `SubagentHandback` where that
+    tool exists (auto mode). There, a denial re-asks the agent.
+  - Elsewhere it is read from `SubagentStop`'s `last_assistant_message`, which can block once
+    (`stop_hook_active`).
+  - The checker runs in log-only mode in step 1 and starts blocking in step 2.
+- The coordinator still re-runs the gates; a claimed pass is never accepted without that.
 
 ### 2.4 Rules at the point of use (R1) — `rules-at-point-of-use`
 
-Claude Code loads a rule in `.claude/rules/` with `paths:` front matter when an agent reads or edits a
-matching file. That includes sub-agents, so a path-bound rule reaches a sub-agent without the brief
-restating it ([memory docs](https://code.claude.com/docs/en/memory#path-specific-rules);
-[sub-agent docs](https://code.claude.com/docs/en/sub-agents#what-loads-at-startup)). The same docs state
-that rules are guidance, not enforcement, and that blocking an action needs a permission rule or a hook.
-So:
+Claude Code loads a `.claude/rules/` file with `paths:` front matter when an agent reads, writes or edits
+a matching file, sub-agents included ([memory](https://code.claude.com/docs/en/memory#path-specific-rules)).
+It does not load on Grep, Glob or a Bash command that reads several files. On a new file it arrives after
+the first write. It is guidance, not enforcement. So:
 
-- **Guidance at the point of use:** a path-scoped rule. In this hub: `docs/decisions/**` gets the rule
-  that records are evidence, not instructions.
-- **Enforcement where a rule must hold:** a permission rule or a hook, never prose. For a consuming repo,
-  the `read-only` entries of `.agents/access.yaml` map directly onto `permissions.deny` for `Edit` and
-  `Write`.
-- **Portability:** these are Claude Code mechanisms. `AGENT_RULES.md` and the skills stay the portable
-  channel. The generated files carry the same rule text, so the two channels cannot drift.
+- **Guidance:** a path-scoped rule. In this hub, the decision-record rule. `scripts/decisions.sh`
+  generates it from the same text as the view's header, so the two cannot drift.
+- **Enforcement where a rule must hold:**
+  - an anchored `Edit(/<glob>)` deny rule, which also covers the Write tool (`Write(path)` rules never
+    match);
+  - plus `sandbox.filesystem` write denies for subprocesses, or a `PreToolUse` hook.
+- **`append` has no permission form.** It is enforced where a check exists: for decision records, by the
+  merge-base freeze in CI. Elsewhere it stays guidance, and the access map says so.
+- **Portability:** `AGENT_RULES.md` and the skills stay the portable channel.
 
-### 2.5 Triggers only where a job runs them (R1) — `review-date-triggers`
+### 2.5 Review dates (R1) — `review-date-triggers`
 
-A decision entry may carry `review: YYYY-MM-DD`. A scheduled CI workflow runs `scripts/decisions.sh
---due` and fails when a review date has passed, which notifies the owner through the host. The trigger
-and its evaluator ship together, so a trigger without an evaluator cannot exist. The dates already
-written in prose (2027-01-31 and 2027-04-30) become such fields. A firing is idempotent: the job fails
-again on each run until the record is superseded or given a later date.
+A decision entry may carry `review: YYYY-MM-DD`.
+
+- **Checking.** `scripts/decisions.sh --due` lists current decisions whose date has passed. Every CI run
+  shows the result as a warning annotation, so the check does not depend on a scheduled workflow, which
+  GitHub disables after 60 days without activity.
+- **Clearing.** A review is cleared by moving the date later, the one front-matter change the freeze
+  allows, or by superseding the record.
+- **Not covered.** The annotation shows only when CI runs. Notifying the owner on the due date itself
+  would need a scheduled job that opens an issue (`issues: write`). That is not built.
 
 ### 2.6 Authority in the host (R1) — `orchestration-authority`
 
-These settings belong to the owner and cannot be made in the repository:
+These are owner settings and cannot be made in the repository:
 
-- a ruleset on `main` that requires a pull request and the `ci` check, with branches up to date;
+- a ruleset on `main` that requires a pull request, the `skills` job of the `ci` workflow, branches up to
+  date, and code-owner review (`.github/CODEOWNERS` names the owner for decisions, scripts, CI and
+  `.claude/`);
 - agents acting under their own host identity, without merge rights.
 
-Until then, every record that says "the owner merges" describes policy, not enforcement.
+Until then, CI runs the pull request's own copy of every check, so a pull request can weaken a check and
+pass it. The checks stop mistakes, not a determined agent.
 
 ## 3. Rollout
 
-Each step is one pull request, merged by the owner, with its acceptance stated before it is built.
+Each step is one pull request, merged by the owner. Acceptance is stated here, before the step is built.
 
-1. **Delegation log (2.2).** The `SubagentStop` hook script and its fields in `reference.md`, with a test
-   that feeds recorded hook inputs and compares the lines written. Acceptance: one line per delegation in a
-   live session, with the model and token fields filled.
-2. **Return contract at the boundary (2.3).**
-   - **Baseline:** read from the log after step 1 has run for at least 20 delegations: the share of
-     sub-agent final messages that carry every contract section.
-   - **Prediction:** at least 95% with the hooks, and no rise in median tokens per delegation above 10%.
-   - **Revert:** if compliance gains under 10 points or the token rise exceeds 10%.
-3. **Path-scoped rules and permissions (2.4).** In this hub, the decision-records rule (done with the
-   decision-record check). For consuming repos, generated by `sync-agent-skills.sh`.
-   - **Measurement:** the selection tranche in `agent-playbook-test`, before and after.
-   - **Prediction:** no loss in selection precision or recall.
-4. **Review dates (2.5).** Grammar, `--due`, the scheduled workflow, and its self-test.
-5. **Host settings (2.6)** by the owner.
+1. **Contract and log, observing only (2.2, 2.3).**
+   - **Built:**
+     - the report format in `subagent-framework` (version bump, CHANGELOG);
+     - the hooks with the checker in log-only mode, and their fields in `reference.md`;
+     - the write-scope hook (2.1);
+     - the CI overlap step (2.1), with `pull-requests: read`.
+   - **Acceptance:** a test feeds recorded hook inputs and compares the records written. The inputs cover
+     an internal agent (ignored), a blocked-then-resumed agent (one `start`, two `stop`s), a hand-back, a
+     worktree agent, and a start with no stop.
+   - **Live check:** a session with three delegations writes three record files, committed on the
+     session's branch. A run in which no hook fired fails it.
+   - **Scope check:** a planted edit outside the scope file is denied.
+   - **Overlap check:** two branches changing one file produce the warning.
+2. **Enforce the contract (2.3).**
+   - **Baseline:** from at least 20 step-1 records. The share of reports the checker passes, and the share
+     of delegations where the coordinator's gate re-run contradicted the agent's claimed state.
+   - **Prediction:** the contradicted share does not rise, and median tokens per delegation, compared
+     within the same agent type, rise by less than the spread between step-1 sessions. The checker's pass
+     rate is not a criterion; the hook produces it.
+   - **Rule:** keep if both hold. Revert if either fails.
+3. **Path rules and permissions (2.4).**
+   - **Measured:** with the `InstructionsLoaded` hook, a sub-agent that edits a matching path loads the
+     rule; a planted edit to a read-only path is denied; a planted subprocess write is blocked when the
+     sandbox is on.
+   - **Side effects:** the selection tranche in `agent-playbook-test`, with no more than one item lost.
+4. **Scheduled notification (2.5).**
+   - **Built:** a scheduled job that opens an issue for a due review.
+   - **Acceptance:** a planted past date opens one issue, and a second run opens none.
+5. **Host settings (2.6), by the owner.**
+   - **Acceptance:** the ruleset query lists the required job and code-owner review.
 
 ## 4. Deferred
 
-- **`multi-coordinator-leases`.** Reopens when the log (2.2) records a failure between independent
-  coordinators: duplicated work, or a collision on a file or shared resource. A design that reopens must
-  meet the constraints below. Each comes from a verified board finding.
-  - A lease is acquired by compare-and-swap at one serialization point (for example a server-side ref
-    created only if absent). It issues a fencing token that only increases, and the merge gate rejects
-    stale tokens.
-  - Writer ids are unique per concurrent writer and never reused; the model id is a field, never a
-    namespace.
-  - Events are ordered by merge order. A dead agent is presumed after a timeout, and its later writes are
-    fenced.
-- **`pointer-brief-measurement`.** `subagent-framework` §3 item 2 already requires a brief to name the
-  files in and out of scope; record ids would be the only addition. Reopens when the harness has at least
-  20 edit tasks on a fixture of realistic size, where the task does not name the files, each with a hidden
-  acceptance test. The current fixtures have 6–8 files, many tasks name the file, scoring is pattern
-  matching on the trace, and the patch is deleted.
-- **`dolt-store`.** Pull-request diffs do not show its data, and plain-file tools cannot read it. Reopens
-  as the first escalation for work state if per-session files measurably fail.
+- **`multi-coordinator-leases`.**
+  - **Reopens** when the cross-session overlap step (2.1) records two sessions changing the same files and
+    a merge conflict or duplicate work results.
+  - **Constraints** a design must then meet, from verified board findings:
+    - A lease is a counter ref advanced by compare-and-swap (`git push --force-with-lease=<ref>:<old>`),
+      so its fencing token only increases.
+    - Fencing is enforced where `main` is written. One merge actor pushes `main` and the lease ref
+      atomically, with expected old values. A status check cannot fence, because it runs before the merge.
+    - Writer ids are unique per concurrent writer; the model id is a field, never a namespace.
+- **`pointer-brief-measurement`.**
+  - **Context:** `subagent-framework` §3 item 2 already requires a brief to name its files; record ids
+    would be the only addition.
+  - **Reopens** when the harness has at least 20 edit tasks on a fixture of realistic size, where the task
+    does not name the files, each with a hidden acceptance test.
+- **`dolt-store`.**
+  - **Against it:** pull-request diffs do not show its data, and plain-file tools cannot read it.
+  - **Reopens** as the first escalation if per-delegation files measurably fail.

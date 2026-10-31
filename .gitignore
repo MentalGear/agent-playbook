@@ -1,6 +1,7 @@
 # This repo is the SOURCE of skills; it must never vendor itself.
 # (guards against running the sync script from here by mistake)
 /.agents/
-/.claude/skills/
-# Personal Claude Code settings stay local; the hub's own .claude/rules/ is committed.
-/.claude/settings.local.json
+# .claude/ is an allowlist: Claude Code writes worktrees, agent memory and local settings here, and none
+# of that may be committed. Only the hub's own rules are.
+/.claude/*
+!/.claude/rules/

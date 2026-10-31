@@ -9,7 +9,8 @@ scope, read-only, fresh agents each run, strongest tier.
 | v1 | never merged; text in the appendix (commit `58d61ce`, no longer on a branch) | run 1 |
 | v2 | commit `49228ce`, `docs/decisions/2026-10-26-decision-records-and-deferred-coordination.md` | run 2 |
 | v3 | commit `08d69db`: `2026-10-26-decision-records-and-guide-route.md` and `2026-10-26-deferred-coordination-layer.md` | run 3 started, stopped by the owner before any result |
-| v4 | `docs/decisions/2026-10-26-decision-records-and-guide-route.md` and `docs/decisions/2026-10-27-orchestration-by-construction.md` | not reviewed by the board |
+| v4 | commit `258cd25`: `2026-10-26-decision-records-and-guide-route.md` and `2026-10-27-orchestration-by-construction.md` | run 4 |
+| v5 | the same two records, revised after run 4 | not reviewed by the board; the owner's rule for run 4 was to move on once the core held with only fixable issues |
 
 **Pass rule, set before run 1:** a run is clean when no BLOCKER or MAJOR finding survives verification in
 the main loop. The plan passes after 2 consecutive clean runs, each with fresh reviewers. Stop and report
@@ -111,6 +112,39 @@ findings were fixed in the same change, each with a test that plants the defect:
 
 Not fixable in the repository: branch protection and a separate agent identity are owner settings
 (`orchestration-authority`, outcome `open`).
+
+## Run 4 (v4) — core sound; not clean
+
+Lenses: distributed systems, security, multi-agent systems, the Claude Code harness (replacing
+docs-as-code, since the plan now rests on hooks and rules), feasibility and QA. All five verdicts: sound
+with fixes. No reviewer disputed the root causes, the single-writer construction, observation at the
+harness boundary, or the shipped repository fixes. The harness reviewer confirmed the hook mechanisms in
+live `claude -p` runs (`additionalContext`, `decision: block`, `stop_hook_active`, path rules loading in
+sub-agents and worktrees). Verified MAJOR findings, all fixed in v5:
+
+| Theme | Raised by | Verified finding | Fix in v5 |
+|---|---|---|---|
+| Self-test could not fail | feasibility | Every planted violation also made the view stale, so 11 rules could be deleted with the test still green. Reproduced by mutation. | `expect_fail` matches the error written for each rule; a mutation of two rules now fails the test. |
+| `.gitignore` | harness, security, feasibility | `.claude/worktrees/` and agent memory were no longer ignored; `git add -A` staged a worktree (live). | Allowlist: `/.claude/*`, then `!/.claude/rules/`. |
+| Review dates vs the freeze | all five | `review:` was not in the grammar and a merged record's front matter is frozen, so a date could never be added or moved; 2027-04-30 had no record. | `review` in the grammar; the freeze allows moving it later only; dates added before merge; `--due` in every CI run. |
+| Two writers on the log | all five | "The coordinator is the only writer" contradicted "a hook writes the log", and the coordinator edited hook-written lines. | One file per delegation written by its hooks; verdicts in a coordinator-only file. |
+| Hook edge cases | harness, multi-agent, distributed, security, feasibility | SubagentStop fires for internal agents, on every stop and resume (4 events for one agent, live), reads the wrong text under `SubagentHandback`; usage is not in the input; worktree hooks run in the worktree; interrupts and crashes write no stop. | Records keyed by `agent_id`, start/stop/usage events, internal agents ignored, hand-back read via `PreToolUse`, `$CLAUDE_PROJECT_DIR` paths, gaps stated; all in the step-1 test inputs. |
+| Contract never specified | multi-agent, harness | The hook was to check sections that no document defines; review schemas lack a state line. | R5 added; step 1 first specifies the report format in `subagent-framework`. |
+| Step-2 measurement | multi-agent, feasibility | The prediction was produced by the hook itself, the baseline had no field, and the criteria left an undecided zone. | Baseline from step-1 log-only checks; outcome measured is the gate-contradiction rate, which the hook does not force; one keep/revert rule. |
+| Permission enforcement overstated | harness (live), security, multi-agent, feasibility | `Write(path)` rules never match; `Edit` denies miss subprocesses; `append` has no permission form. | Anchored `Edit` denies plus sandbox or hooks; `append` enforced only where a check exists. |
+| Single writer between sessions; disjoint scopes by compliance; nesting | distributed, multi-agent | Each session is a coordinator; the reopen trigger could not be observed; scopes only stated; sub-agents nest three levels. | Stated as unsolved; CI overlap step as detector and reopen trigger; write-scope hook plus worktrees; nested coordinators own their children's verdicts. |
+| Adopted statements for unbuilt things | security, multi-agent | The view would tell agents the hooks exist. | Statements say "Planned, rollout step N" with review dates. |
+| Checks run the PR's own code | security | A PR can weaken the check it is judged by on an unprotected `main`. | Stated as a limit; `.github/CODEOWNERS` added; code-owner review added to the owner's settings. |
+| Rollout acceptance | multi-agent, feasibility | Steps 3–5 lacked falsifiable acceptance; step 3's instrument could not fail. | Acceptance per step; step 3 measured with `InstructionsLoaded` and planted writes. |
+| Lease constraint | distributed | A create-if-absent ref is not a fencing token; a status check cannot fence. | Counter ref by compare-and-swap; fencing at the single writer of `main`. |
+
+Minor findings fixed: the registry comment's overclaim; CI base taken from the merge commit's first parent
+and a missing base now fails; `persist-credentials: false`; argument checks, subdirectories, `.MD` files
+and supersedes names in the checker; `eol=lf` for records; the rule file generated from the view's text.
+Minor findings left: statement sanitisation beyond the character ban (URLs, bidi controls), `## Amended`
+date validation, widening the layout-homes pattern, more registry merge cases in its test.
+
+**Rejected on verification:** none.
 
 ## Appendix — plan v1 as reviewed in run 1
 

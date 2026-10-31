@@ -50,6 +50,7 @@ paths:
     permission: write
   - glob: "docs/decisions/**"
     permission: append            # add a record; a changed decision is a new record that supersedes
+                                  # (a generator that keeps an index or banners there may rewrite those)
   - glob: "docs/research/**"
     permission: append            # add files; don't rewrite history
   - glob: "docs/debug/**"
